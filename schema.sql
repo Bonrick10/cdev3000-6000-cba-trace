@@ -43,7 +43,7 @@ CREATE TABLE transactions (
     transaction_time timestamptz NOT NULL,
     sender_latitude Decimal(8,6) CHECK (sender_latitude >= -90 AND sender_latitude <= 90),
     sender_longitude Decimal(9,6) CHECK (sender_longitude >= -180 AND sender_longitude <= 180), -- https://stackoverflow.com/a/1196429
-    label transaction_label, -- note this is the most up to adte label after any corrections
+    label transaction_label, -- note this is the most up to date label after any corrections
     merchant_tags BIGINT REFERENCES merchant_tags(id),
     session_id BIGINT NOT NULL REFERENCES device_sessions(id)
 );  
