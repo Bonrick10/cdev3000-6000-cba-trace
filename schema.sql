@@ -27,7 +27,7 @@ CREATE TABLE internal_accounts (
     account_number INTEGER,
     entity_id BIGINT NOT NULL REFERENCES entities(id),
     account_type account_type NOT NULL,
-    funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY),
+    funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY) DEFAULT 0.0::MONEY ,
 
     FOREIGN KEY (bsb, account_number) REFERENCES accounts(bsb, account_number),
     PRIMARY KEY (bsb, account_number)
