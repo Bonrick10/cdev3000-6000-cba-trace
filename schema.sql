@@ -65,8 +65,8 @@ CREATE TABLE transactions (
     merchant_tags BIGINT REFERENCES merchant_tags(id),
     session_id BIGINT NOT NULL REFERENCES device_sessions(id),
 
-    FOREIGN KEY (sender_bsb, sender_account_number) REFERENCES account(bsb, account_number), -- potentially somehow check that at least one of sender/receiver is internal_account
-    FOREIGN KEY (receiver_bsb, receiver_account_number) REFERENCES account(bsb, account_number)
+    FOREIGN KEY (sender_bsb, sender_account_number) REFERENCES accounts(bsb, account_number), -- potentially somehow check that at least one of sender/receiver is internal_account
+    FOREIGN KEY (receiver_bsb, receiver_account_number) REFERENCES accounts(bsb, account_number)
 );  
 
 CREATE TABLE corrections (
