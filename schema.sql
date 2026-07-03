@@ -8,19 +8,35 @@ CREATE TABLE entities (
     date_of_birth date NOT NULL
 );
 
-CREATE TABLE accounts ( 
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE branches (
+    bsb INTEGER PRIMARY KEY CHECK (bsb >= 100000 AND bsb <= 999999),
+    branch_location VARCHAR(64), -- suburb for now I guess 
+    is_internal BOOLEAN NOT NULL -- Did this instead of creating 2 child tables for internal and external since fields basically same
+);
+
+CREATE TABLE accounts (
+    bsb INTEGER REFERENCES branches(bsb),
+    account_number INTEGER CHECK (account_number > 0), -- not a set amount of digit range for account number 
+    account_name VARCHAR(64),
+
+    PRIMARY KEY (bsb, account_number)
+);
+
+CREATE TABLE internal_accounts ( 
+    bsb INTEGER,
+    account_number INTEGER,
     entity_id BIGINT NOT NULL REFERENCES entities(id),
     account_type account_type NOT NULL,
-    daily_spending money DEFAULT 0.0 CHECK (daily_spending >= 0.0::money),-- likely to cause update anomalies 
-    weekly_spending money DEFAULT 0.0 CHECK (daily_spending >= 0.0::money) -- likely to cause update anomalies 
-    -- could create a trigger for the above two when new transaction inserted but it would be difficult to remove transactions once it leaves the time window
+    funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY),
+
+    FOREIGN KEY (bsb, account_number) REFERENCES accounts(bsb, account_number),
+    PRIMARY KEY (bsb, account_number)
 );
 
 CREATE TABLE merchant_tags (
     id BIGSERIAL PRIMARY KEY,
-    suspicious_threshold_upper money CHECK (suspicious_threshold_upper >= 0.0::money),
-    suspicious_threshold_lower money CHECK (suspicious_threshold_lower >= 0.0::money),
+    suspicious_threshold_upper MONEY CHECK (suspicious_threshold_upper >= 0.0::MONEY),
+    suspicious_threshold_lower MONEY CHECK (suspicious_threshold_lower >= 0.0::MONEY),
 
     CONSTRAINT check_upper_threshold_exceeds_lower CHECK ( suspicious_threshold_upper >= suspicious_threshold_lower)
 );
@@ -37,15 +53,20 @@ CREATE TABLE device_sessions (
 
 CREATE TABLE transactions (
     id BIGSERIAL PRIMARY KEY,
-    sender_id BIGINT NOT NULL REFERENCES accounts(id), 
-    recipient_id BIGINT NOT NULL REFERENCES accounts(id), -- TODO: handle sender/receiver outside of system, e.g. non CBA customer
-    amount money NOT NULL CHECK (amount >= 0.0::money),
+    sender_bsb INTEGER NOT NULL, 
+    sender_account_number INTEGER NOT NULL, 
+    receiver_bsb INTEGER NOT NULL, 
+    receiver_account_number INTEGER NOT NULL, 
+    amount MONEY NOT NULL CHECK (amount >= 0.0::MONEY),
     transaction_time timestamptz NOT NULL,
     sender_latitude Decimal(8,6) CHECK (sender_latitude >= -90 AND sender_latitude <= 90),
     sender_longitude Decimal(9,6) CHECK (sender_longitude >= -180 AND sender_longitude <= 180), -- https://stackoverflow.com/a/1196429
     label transaction_label, -- note this is the most up to date label after any corrections
     merchant_tags BIGINT REFERENCES merchant_tags(id),
-    session_id BIGINT NOT NULL REFERENCES device_sessions(id)
+    session_id BIGINT NOT NULL REFERENCES device_sessions(id),
+
+    FOREIGN KEY (sender_bsb, sender_account_number) REFERENCES account(bsb, account_number), -- potentially somehow check that at least one of sender/receiver is internal_account
+    FOREIGN KEY (receiver_bsb, receiver_account_number) REFERENCES account(bsb, account_number)
 );  
 
 CREATE TABLE corrections (
