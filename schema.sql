@@ -47,6 +47,7 @@ CREATE TABLE device_sessions (
     id BIGSERIAL PRIMARY KEY, 
     entity_id BIGINT REFERENCES entities(id),
     device_id CHAR(64),  -- alternatively session token 
+    -- TODO: Add start timestamp into device_session 
 
     CONSTRAINT entity_device_uniqueness UNIQUE (entity_id, device_id)
 );

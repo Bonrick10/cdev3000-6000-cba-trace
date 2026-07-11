@@ -1,15 +1,25 @@
 """ Read and Process Data from Database into format readable to model """
 
+import os
+from dotenv import load_dotenv
+import psycopg2
 import pandas
 import numpy
 
+load_dotenv() # load local environment variables from .env
+
 def read_data():
     print("Reading Data")
-    # TODO: Figure out import from NEON incl which fields to include
-    # likely would have to join basically all tables
-    # https://pandas.pydata.org/docs/reference/api/pandas.read_sql.html
-    # May not even need db.py interface file
-    # data_frame = pandas.read_csv("train.csv")
+    # This only gets transaction data for now for basic implementation 
+    # TODO: Later join with more table information to give more info to model 
+    query = """
+        SELECT * 
+        FROM transactions
+        WHERE transactions.transaction_time < NOW() - INTERVAL '60 days'
+    """
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    data_frame = pandas.read_sql(query, conn)
+    conn.close()
     return data_frame
 
 def process_data(data_frame):
@@ -35,3 +45,5 @@ def process_data(data_frame):
     #                                    numpy.nan:data_frame['LoanAmount'].mean(),
     #                                    numpy.nan:data_frame['Loan_Amount_Term'].mean()})
     return data_frame
+
+print(read_data())
