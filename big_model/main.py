@@ -21,7 +21,9 @@ if __name__ == "__main__":
     # and <60 days is blind period not handled by big model, Time split more accurately reflects CBA's implementation and keeps fraud trends together
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X, y, test_size = TEST_SIZE, random_state = 0)
 
-    # Standardise input fields so that they have mean of 0 and standard deviation of 1, potentially move this to different file
+    # Standardise input fields so that they have mean of 0 and standard deviation of 1
+    # Would need to call standard_scaler.transform(X) for future datasets prior to prediction
+    # TODO: implement standard scaler persistence 
     standard_scaler = sklearn.preprocessing.StandardScaler()
     X_train = standard_scaler.fit_transform(X_train)
     X_test = standard_scaler.transform(X_test)
