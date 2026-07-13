@@ -24,6 +24,7 @@
 2. Total spending exceeds customer's weekly average within a single day -> _unusual_
 3. Two transactions made more than 500km apart per hour -> _suspicious_
 4. Transactions in excess of $10 000 to new payees -> _unusual_ 
-5. Transactions outside of normal range for merchant type -> _suspicious_  
+5. Transactions outside of normal range for merchant type -> _unusual_  
+6. Transactions far exceed normal range for merchant type -> _suspicious_
 **Emerging Fraud trend not included in ruleset**
-6. TODO
+7. TODO

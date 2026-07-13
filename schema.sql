@@ -35,10 +35,14 @@ CREATE TABLE internal_accounts (
 
 CREATE TABLE merchant_tags (
     id BIGSERIAL PRIMARY KEY,
-    suspicious_threshold_upper MONEY CHECK (suspicious_threshold_upper >= 0.0::MONEY),
     suspicious_threshold_lower MONEY CHECK (suspicious_threshold_lower >= 0.0::MONEY),
+    usual_threshold_lower MONEY CHECK (usual_threshold_lower >= 0.0::MONEY),
+    usual_threshold_upper MONEY CHECK (usual_threshold_upper >= 0.0::MONEY),
+    suspicious_threshold_upper MONEY CHECK (suspicious_threshold_upper >= 0.0::MONEY),
 
-    CONSTRAINT check_upper_threshold_exceeds_lower CHECK ( suspicious_threshold_upper >= suspicious_threshold_lower)
+    CONSTRAINT usual_lower_gt_suspicious_lower CHECK ( usual_threshold_lower >= suspicious_threshold_lower)
+    CONSTRAINT usual_upper_gt_usual_lower CHECK ( usual_threshold_upper >= usual_threshold_lower)
+    CONSTRAINT suspicious_upper_gt_usual_upper CHECK ( suspicious_threshold_upper >= usual_threshold_upper)
 );
 
 CREATE TABLE device_sessions (
