@@ -1,5 +1,5 @@
 CREATE TYPE account_type AS ENUM('savings', 'transactions');
-CREATE TYPE transaction_label AS ENUM('legitimate', 'unusual', 'suspicious');
+CREATE TYPE transaction_label AS ENUM('confirmed_legitimate', 'legitimate', 'unusual', 'suspicious', 'confirmed_fraud', 'rule_violation');
 
 CREATE TABLE entities (
     id BIGSERIAL PRIMARY KEY,
@@ -47,6 +47,8 @@ CREATE TABLE device_sessions (
     id BIGSERIAL PRIMARY KEY, 
     entity_id BIGINT REFERENCES entities(id),
     device_id CHAR(64),  -- alternatively session token 
+    session_start_time timestamptz NOT NULL,
+    session_end_time timestamptz,
 
     CONSTRAINT entity_device_uniqueness UNIQUE (entity_id, device_id)
 );
