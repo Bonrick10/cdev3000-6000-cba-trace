@@ -1,5 +1,5 @@
 CREATE TYPE account_type AS ENUM('savings', 'transactions');
-CREATE TYPE transaction_label AS ENUM('confirmed_legitimate', 'legitimate', 'unusual', 'suspicious', 'confirmed_fraud', 'rule_violation');
+CREATE TYPE transaction_label AS ENUM('confirmed_legitimate', 'legitimate', 'unusual', 'suspicious', 'confirmed_fraudulent', 'rule_violation'); -- note that fraudulent covers both fraud and scam here
 
 CREATE TABLE entities (
     id BIGSERIAL PRIMARY KEY,
