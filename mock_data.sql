@@ -7,5 +7,5 @@ INSERT INTO merchant_tags(suspicious_threshold_lower, usual_threshold_lower, usu
 INSERT INTO device_sessions (entity_id, device_id, session_start_time) VALUES (1, 'test1''s device', '2000-01-01 00:00:00');
 INSERT INTO device_sessions (entity_id, device_id, session_start_time) VALUES (2, 'test2''s device', '2000-01-01 00:00:00');
 
-INSERT INTO transactions (sender_bsb, sender_account_number, receiver_bsb, receiver_account_number, amount, transaction_time, sender_latitude, sender_longitude, label, merchant_tags, session_id) VALUES (100000, 1, 100000, 2, 1.0, '2001-01-01 00:00:00', 0, 0, 'legitimate', 1, 1);
-INSERT INTO transactions (sender_bsb, sender_account_number, receiver_bsb, receiver_account_number, amount, transaction_time, sender_latitude, sender_longitude, label, merchant_tags, session_id) VALUES (100000, 2, 100000, 1, 2.0, '2001-01-01 00:00:30', 0, 0, 'legitimate', 1, 2);
+INSERT INTO transactions (sender_bsb, sender_account_number, receiver_bsb, receiver_account_number, amount, transaction_time, sender_latitude, sender_longitude, label, merchant_tags, session_id) VALUES (100000, 1, 100000, 2, 10.0, '2001-01-01 00:00:00', 0, 0, 'legitimate', 1, 1);
+INSERT INTO transactions (sender_bsb, sender_account_number, receiver_bsb, receiver_account_number, amount, transaction_time, sender_latitude, sender_longitude, label, merchant_tags, session_id) VALUES (100000, 2, 100000, 1, 50.0, '2001-01-01 00:00:30', 0, 0, 'legitimate', 1, 2);
