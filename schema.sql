@@ -11,25 +11,15 @@ CREATE TABLE entities (
 CREATE TABLE branches (
     bsb INTEGER PRIMARY KEY CHECK (bsb >= 100000 AND bsb <= 999999),
     branch_location VARCHAR(64), -- suburb for now I guess 
-    is_internal BOOLEAN NOT NULL -- Did this instead of creating 2 child tables for internal and external since fields basically same
 );
 
 CREATE TABLE accounts (
     bsb INTEGER REFERENCES branches(bsb),
     account_number INTEGER CHECK (account_number > 0), -- not a set amount of digit range for account number 
     account_name VARCHAR(64),
-
-    PRIMARY KEY (bsb, account_number)
-);
-
-CREATE TABLE internal_accounts ( 
-    bsb INTEGER,
-    account_number INTEGER,
-    entity_id BIGINT NOT NULL REFERENCES entities(id),
     account_type account_type NOT NULL,
     funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY) DEFAULT 0.0::MONEY ,
 
-    FOREIGN KEY (bsb, account_number) REFERENCES accounts(bsb, account_number),
     PRIMARY KEY (bsb, account_number)
 );
 
