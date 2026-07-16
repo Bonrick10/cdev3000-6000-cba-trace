@@ -7,7 +7,7 @@ SELECT
     'Sunshine Coast','Launceston', 'Rockhampton','Mackay','Bundaberg','Hervey Bay',
     'Coffs Harbour','Port Macquarie','Tamworth','Armidale','Orange','Bathurst',
     'Albury','Wagga Wagga','Shepparton','Mildura','Warrnambool',
-    'Bunbury','Geraldton','Kalgoorlie','Alice Springs','Mount Isa'] )[1 + (random() * 39)::int] AS branch_location
+    'Bunbury','Geraldton','Kalgoorlie','Alice Springs','Mount Isa'] )[1 + (random() * 38)::int] AS branch_location
 FROM generate_series(1, 500) g;
 
 INSERT INTO entities (id, given_name, surname, date_of_birth)
@@ -22,15 +22,11 @@ SELECT
     date '1950-01-01' + (random() * (date '2000-12-31' - date '1950-01-01'))::int AS date_of_birth
 FROM generate_series(1, 50) g;
 
-INSERT INTO internal_accounts (bsb, account_number, entity_id, account_type, funds)
+INSERT INTO accounts (bsb, account_number, entity_id, funds)
 SELECT
     b.bsb,
     (100000000 + (g * 7919) % 900000000) AS account_number,
     e.id,
-    (CASE floor(random() * 2)
-        WHEN 0 THEN 'savings'::account_type
-        ELSE 'transactions'::account_type
-    END) AS account_type,
     (random() * 10000)::numeric(10,2) AS funds
 FROM generate_series(1, 500) g
 CROSS JOIN LATERAL (
@@ -97,10 +93,11 @@ VALUES
 (6051, 'Cryptocurrency Exchange',  10.00,     50.00,     5000.00,    10000.00);
 
 
-INSERT INTO device_sessions (id, entity_id, session_start_time, session_end_time)
+INSERT INTO device_sessions (id, entity_id, device_id, session_start_time, session_end_time)
 SELECT
     (g * 7919) % 90000 + 100000,
     e.id AS entity_id,
+    MD5(g::text) AS device_id,
     NOW() - (random() * interval '365 days') AS session_start_time,
     (CASE
     WHEN random() < 0.3 THEN NULL
