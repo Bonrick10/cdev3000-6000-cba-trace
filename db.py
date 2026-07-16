@@ -30,9 +30,9 @@ def get_transaction_surrounding_info(transaction):
     cur.execute("""
         SELECT 
             json_build_object(
-                'device_session', json_build_object(
-                    'start_time', device_sessions.session_start_time,
-                    'end_time', device_sessions.session_end_time
+                'device_seen_before', EXISTS (
+                    SELECT device_sessions.id 
+                    FROM 
                 ), 
                 'merchant_thresholds', CASE WHEN %(merchant_tags)s IS NOT NULL THEN
                     json_build_object(

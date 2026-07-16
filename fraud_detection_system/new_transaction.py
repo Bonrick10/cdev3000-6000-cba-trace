@@ -7,9 +7,9 @@
     If any point fails then the transaction is blocked, otherwise it is allowed to go through
 """
 import sys
-sys.path.insert(0, ".")  # add Folder_2 path to search list
 import json
 from label import Label
+sys.path.append('.') 
 from db import get_transaction_surrounding_info
 from geopy.distance import geodesic
 
@@ -32,17 +32,5 @@ def process_transaction(transaction):
     print(surrounding_info)
 
     ruleset_result = check_rules(transaction, surrounding_info)
-
-def check_rules(transaction, surrounding_info):
-    pass
-    # 1. Transaction made from a previously unseen device associated with the customer -> unusual 
-    # 2. Total spending exceeds customer's weekly average within a single day -> unusual
-    
-    # 3. Two transactions made more than 500km apart per hour -> suspicious
-    distance = geodesic((surrounding_info["last_transaction_lattitude"], surrounding_info["last_transaction_longitude"]),(transaction["sender_latitude"], transaction["sender_longitude"])).km
-    print(distance)
-    # 4. Transactions in excess of $10 000 to new payees -> unusual 
-    # 6. Transactions far exceed normal range for merchant type -> suspicious  
-    # 5. Transactions outside of normal range for merchant type -> unusual  
 
 process_transaction(read_transaction("fraud_detection_system/test_new_transaction.json"))
