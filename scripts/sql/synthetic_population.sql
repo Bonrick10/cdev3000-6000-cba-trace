@@ -26,9 +26,9 @@ FROM generate_series(1, 5000) g;
 
 INSERT INTO accounts (bsb, account_number, account_name)
 SELECT 
+    (SELECT bsb FROM branches ORDER BY random() LIMIT 1) AS bsb,
     (random() * 8999999999 + 1000000000)::bigint AS account_number,
-    (SELECT given_name || ' ' || surname FROM entities WHERE id = (SELECT id FROM entities ORDER BY random() LIMIT 1)) AS account_name,
-    (SELECT bsb FROM branches ORDER BY random() LIMIT 1) AS bsb
+    (SELECT given_name || ' ' || surname FROM entities WHERE id = (SELECT id FROM entities ORDER BY random() LIMIT 1)) AS account_name
 FROM generate_series(1, 100000) g;
 
 INSERT INTO internal_accounts (bsb, account_number, entity_id, account_type, funds)
