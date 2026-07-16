@@ -1,7 +1,10 @@
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
+
+load_dotenv()
 class NeonDB:
     def __init__(self, db_url=None):
         self.db_url = db_url or os.getenv("DATABASE_URL")
