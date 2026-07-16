@@ -9,7 +9,7 @@ CREATE TABLE entities (
 
 CREATE TABLE branches (
     bsb INTEGER PRIMARY KEY CHECK (bsb >= 100000 AND bsb <= 999999),
-    branch_location VARCHAR(64), -- suburb for now I guess 
+    branch_location VARCHAR(64) -- suburb for now I guess 
 );
 
 CREATE TABLE accounts (
@@ -23,7 +23,7 @@ CREATE TABLE accounts (
 
 CREATE TABLE merchant_tags (
     id BIGSERIAL PRIMARY KEY,
-    merchant_category VARCHAR(64) NOT NULL 
+    merchant_category VARCHAR(64) NOT NULL,
     suspicious_threshold_lower MONEY CHECK (suspicious_threshold_lower >= 0.0::MONEY) NOT NULL,
     usual_threshold_lower MONEY CHECK (usual_threshold_lower >= 0.0::MONEY) NOT NULL,
     usual_threshold_upper MONEY CHECK (usual_threshold_upper >= 0.0::MONEY) NOT NULL,
