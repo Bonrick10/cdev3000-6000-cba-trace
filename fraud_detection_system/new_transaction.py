@@ -15,5 +15,10 @@ def read_transaction(filename):
         contents = json.load(file)
         print(contents)
 
+def process_transaction():
+    pass
+
+def check_rules(): 
+    pass
     
 read_transaction("fraud_detection_system/test_new_transaction.json")
