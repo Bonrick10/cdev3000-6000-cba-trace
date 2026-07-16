@@ -1,11 +1,15 @@
-def check_rules(transaction, surrounding_info):
-    # Check Suspicious Rules First and Instant Exit if fails
-    check_impossible_travel(transaction, surrounding_info)
-    check_merchant_type_range(transaction, surrounding_info)
-    
-    
+from geopy.distance import geodesic
 
+def check_rules(transaction, surrounding_info):
+    # Check Suspicious rules first and Instant Exit if fails
+    check_impossible_travel(transaction, surrounding_info)
+    check_merchant_type_suspicious_range(transaction, surrounding_info)
     
+    # Then check unusual rules, but don't instant fail 
+    check_unseen_device(transaction, surrounding_info)
+    check_exceed_weekly_average(transaction, surrounding_info)
+    check_large_amount_to_new_payee(transaction, surrounding_info)
+    check_merchant_type_suspicious_range(transaction, surrounding_info)
     
     
 
@@ -14,7 +18,7 @@ def check_unseen_device(transaction, surrounding_info):
     pass
 
 def check_exceed_weekly_average(transaction, surrounding_info):
-    # 2. Total spending exceeds customer's weekly average within a single day -> unusual
+    # 2. Total spending exceeds customer's cumulative 7 day total within 24 hours -> unusual
     pass 
 
 def check_impossible_travel(transaction, surrounding_info): 
@@ -26,7 +30,10 @@ def check_large_amount_to_new_payee(transaction, surrounding_info):
     # 4. Transactions in excess of $10 000 to new payees -> unusual 
     pass
 
-def check_merchant_type_range(transaction, surrounding_info): 
-    # 5. Transactions far exceed normal range for merchant type -> suspicious  
-    # 6. Transactions outside of normal range for merchant type -> unusual  
+def check_merchant_type_unusual_range(transaction, surrounding_info): 
+    # 5. Transactions outside of normal range for merchant type -> unusual  
+    pass
+
+def check_merchant_type_suspicious_range(transaction, surrounding_info): 
+    # 6. Transactions far exceed normal range for merchant type -> suspicious  
     pass

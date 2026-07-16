@@ -10,9 +10,8 @@ import sys
 import json
 from label import Label
 sys.path.append('.') 
-sys.path.append('.') 
 from db import get_transaction_surrounding_info
-from geopy.distance import geodesic
+from rules import check_rules
 
 MODEL_UNUSUAL_THRESHOLD = 0.7
 MODEL_SUSPICIOUS_THRESHOLD = 0.9
