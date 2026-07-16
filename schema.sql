@@ -1,4 +1,3 @@
-CREATE TYPE account_type AS ENUM('savings', 'transactions');
 CREATE TYPE transaction_label AS ENUM('confirmed_legitimate', 'legitimate', 'unusual', 'suspicious', 'confirmed_fraudulent', 'rule_violation'); -- note that fraudulent covers both fraud and scam here
 
 CREATE TABLE entities (
@@ -10,35 +9,25 @@ CREATE TABLE entities (
 
 CREATE TABLE branches (
     bsb INTEGER PRIMARY KEY CHECK (bsb >= 100000 AND bsb <= 999999),
-    branch_location VARCHAR(64), -- suburb for now I guess 
-    is_internal BOOLEAN NOT NULL -- Did this instead of creating 2 child tables for internal and external since fields basically same
+    branch_location VARCHAR(64) -- suburb for now I guess 
 );
 
 CREATE TABLE accounts (
     bsb INTEGER REFERENCES branches(bsb),
     account_number INTEGER CHECK (account_number > 0), -- not a set amount of digit range for account number 
     account_name VARCHAR(64),
-
-    PRIMARY KEY (bsb, account_number)
-);
-
-CREATE TABLE internal_accounts ( 
-    bsb INTEGER,
-    account_number INTEGER,
-    entity_id BIGINT NOT NULL REFERENCES entities(id),
-    account_type account_type NOT NULL,
     funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY) DEFAULT 0.0::MONEY ,
 
-    FOREIGN KEY (bsb, account_number) REFERENCES accounts(bsb, account_number),
     PRIMARY KEY (bsb, account_number)
 );
 
 CREATE TABLE merchant_tags (
     id BIGSERIAL PRIMARY KEY,
-    suspicious_threshold_lower MONEY CHECK (suspicious_threshold_lower >= 0.0::MONEY),
-    usual_threshold_lower MONEY CHECK (usual_threshold_lower >= 0.0::MONEY),
-    usual_threshold_upper MONEY CHECK (usual_threshold_upper >= 0.0::MONEY),
-    suspicious_threshold_upper MONEY CHECK (suspicious_threshold_upper >= 0.0::MONEY),
+    merchant_category VARCHAR(64) NOT NULL,
+    suspicious_threshold_lower MONEY CHECK (suspicious_threshold_lower >= 0.0::MONEY) NOT NULL,
+    usual_threshold_lower MONEY CHECK (usual_threshold_lower >= 0.0::MONEY) NOT NULL,
+    usual_threshold_upper MONEY CHECK (usual_threshold_upper >= 0.0::MONEY) NOT NULL,
+    suspicious_threshold_upper MONEY CHECK (suspicious_threshold_upper >= 0.0::MONEY) NOT NULL,
 
     CONSTRAINT usual_lower_gt_suspicious_lower CHECK (usual_threshold_lower >= suspicious_threshold_lower),
     CONSTRAINT usual_upper_gt_usual_lower CHECK (usual_threshold_upper >= usual_threshold_lower),
@@ -49,8 +38,8 @@ CREATE TABLE device_sessions (
     -- was going to make (entity_id, device_id) a primary key but that would make it annoying for transactions to 
     -- reference this table since would have to store both fields 
     id BIGSERIAL PRIMARY KEY, 
-    entity_id BIGINT REFERENCES entities(id),
-    device_id CHAR(64),  -- alternatively session token 
+    entity_id BIGINT NOT NULL REFERENCES entities(id),
+    device_id CHAR(64) NOT NULL,  -- alternatively session token 
     session_start_time timestamptz NOT NULL,
     session_end_time timestamptz,
 
