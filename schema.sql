@@ -39,8 +39,8 @@ CREATE TABLE device_sessions (
     -- was going to make (entity_id, device_id) a primary key but that would make it annoying for transactions to 
     -- reference this table since would have to store both fields 
     id BIGSERIAL PRIMARY KEY, 
-    entity_id BIGINT REFERENCES entities(id),
-    device_id CHAR(64),  -- alternatively session token 
+    entity_id BIGINT REFERENCES entities(id) NOT NULL,
+    device_id CHAR(64) NOT NULL,  -- alternatively session token 
     session_start_time timestamptz NOT NULL,
     session_end_time timestamptz,
 
