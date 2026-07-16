@@ -94,16 +94,3 @@ def get_transaction_surrounding_info(transaction):
     # ^ convert non entries into None - especially for merchant_tags which may not be provided
 
     return cur.fetchone()[0]
-
-print(get_transaction_surrounding_info({
-    "sender_bsb": 100000,
-    "sender_account_number": 1,
-    "receiver_bsb": 100000,
-    "receiver_account_number": 2,
-    "amount": 10,
-    "transaction_time": "2001-01-03 00:00:00+00",
-    "sender_latitude": 0.0,
-    "sender_longitude": 0.0,
-    "merchant_tags": 1, 
-    "session_id": 1
-}))
