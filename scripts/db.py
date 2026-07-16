@@ -6,11 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 class NeonDB:
-    class NeonDB:
-        """
-        Wrapper for connecting to Neon/Postgres using psycopg2.
-        """
-        
+    """
+    Wrapper for connecting to Neon/Postgres using psycopg2.
+    """
     def __init__(self, db_url=None):
         """
         Initialize the NeonDB instance and load the database URL.
