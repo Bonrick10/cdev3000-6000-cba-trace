@@ -45,7 +45,7 @@ src/
 - _rule\_violation_ - violates ruleset - instantly blocked before reaches model
 ### Rules/Scenarios
 1. Transaction made from a previously unseen device associated with the customer -> _unusual_ 
-2. Total spending exceeds customer's cumulative 7 day total within 24 hours -> _unusual_
+2. 24 hour spending exceeds customer's cumulative 7 day total -> _unusual_
 3. Two transactions made more than 500km apart per hour -> _suspicious_
 4. Transactions in excess of $10 000 to new payees -> _unusual_ 
 5. Transactions outside of normal range for merchant type -> _unusual_  

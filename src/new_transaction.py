@@ -26,6 +26,14 @@ def read_transaction(filename):
         return contents
 
 def process_transaction(transaction):
-    ruleset_result = check_rules(transaction)
+    ruleset_result = check_rules(transaction, DRYRUN_FLAG)
+    if ruleset_result == Label.SUSPICIOUS:
+        return Label.SUSPICIOUS
+    
+    # Call Large Model 
+
+    # Call Small Model
+    
+    return ruleset_result
 
 process_transaction(read_transaction("src/test_new_transaction.json"))

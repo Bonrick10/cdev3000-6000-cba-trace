@@ -12,6 +12,15 @@ WITH period_spending AS (
     AND transactions.transaction_time >=  %(transaction_time)s::timestamptz - INTERVAL '7 days'
     AND transactions.transaction_time <=  %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
 ),
+sender_entity AS (
+  SELECT entities.id
+  FROM 
+    entities 
+    INNER JOIN accounts ON accounts.entity_id = entities.id
+    WHERE 
+      accounts.bsb = %(sender_bsb)s
+      AND accounts.account_number = %(sender_account_number)s
+),
 last_transaction AS (
   SELECT 
     transactions.transaction_time,
@@ -29,21 +38,17 @@ last_transaction AS (
 SELECT json_build_object(
   'device_seen_before', EXISTS (
     SELECT 1
-    FROM device_sessions
+    FROM 
+      device_sessions
+      CROSS JOIN sender_entity
     WHERE 
-      device_sessions.entity_id = (
-        SELECT entities.id
-        FROM 
-          entities 
-          INNER JOIN accounts ON accounts.entity_id = entities.id
-          WHERE 
-            accounts.bsb = %(sender_bsb)s
-            AND accounts.account_number = %(sender_account_number)s
-      )
+      device_sessions.entity_id = sender_entity.id
       AND device_sessions.device_id = %(device_id)s
+      AND device_sessions.session_start_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
   ),
-  '24_hour_spending', period_spending."24_hour",-- note that this excludes the pending new transaction 
-  '7_day_spending', period_spending."7_day",
+  'entity_id', sender_entity.id,
+  '24_hour_spending', period_spending."24_hour"::numeric,-- note that this excludes the pending new transaction 
+  '7_day_spending', period_spending."7_day"::numeric,
   'last_transaction_time', last_transaction.transaction_time,
   'last_transaction_longitude', last_transaction.sender_longitude,
   'last_transaction_lattitude', last_transaction.sender_latitude,
@@ -58,11 +63,12 @@ SELECT json_build_object(
         AND transactions.receiver_bsb = %(receiver_bsb)s
         AND transactions.receiver_account_number = %(receiver_account_number)s
   ),
-  'suspicious_threshold_lower', merchant_tags.suspicious_threshold_lower,
-  'usual_threshold_lower', merchant_tags.usual_threshold_lower,
-  'usual_threshold_upper', merchant_tags.usual_threshold_upper,
-  'suspicious_threshold_upper', merchant_tags.suspicious_threshold_upper
+  'suspicious_threshold_lower', merchant_tags.suspicious_threshold_lower::numeric,
+  'usual_threshold_lower', merchant_tags.usual_threshold_lower::numeric,
+  'usual_threshold_upper', merchant_tags.usual_threshold_upper::numeric,
+  'suspicious_threshold_upper', merchant_tags.suspicious_threshold_upper::numeric
 )
 FROM period_spending
+CROSS JOIN sender_entity
 LEFT JOIN merchant_tags ON merchant_tags.id = %(merchant_tags)s -- These two may be NULL
 LEFT JOIN last_transaction ON TRUE;
