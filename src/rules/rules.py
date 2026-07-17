@@ -72,7 +72,10 @@ def check_impossible_travel(transaction, surrounding_info):
             surrounding_info["last_transaction_lattitude"],
             surrounding_info["last_transaction_longitude"]
         ),
-        (transaction["sender_latitude"], transaction["sender_longitude"])
+        (
+            transaction["sender_latitude"],
+            transaction["sender_longitude"]
+        )
         ).km
     delta_time_hours = (
         datetime.datetime.fromisoformat(transaction["transaction_time"])
@@ -84,7 +87,6 @@ def check_impossible_travel(transaction, surrounding_info):
         return False
     return distance / delta_time_hours > IMPOSSIBLE_TRAVEL_THRESHOLD
 
-
 def check_large_amount_to_new_payee(transaction, surrounding_info):
     """ 4. Transactions in excess of $10 000 to new payees -> unusual """
     return surrounding_info["is_new_payee"] and transaction["amount"] > NEW_PAYEE_UNUSUAL_THRESHOLD
@@ -92,25 +94,29 @@ def check_large_amount_to_new_payee(transaction, surrounding_info):
 def check_merchant_type_unusual_range(transaction, surrounding_info):
     """ 5. Transactions outside of normal range for merchant type -> unusual """
     # Note that lower and upper thresholds may be NULL
-    if (surrounding_info["usual_threshold_lower"]
-        and transaction["amount"] < surrounding_info["usual_threshold_lower"]
-        ):
-        return True
-    if (surrounding_info["usual_threshold_upper"]
-        and transaction["amount"] > surrounding_info["usual_threshold_upper"]
-        ):
-        return True
-    return False
+    return (
+            (
+                surrounding_info["usual_threshold_lower"]
+                and transaction["amount"] < surrounding_info["usual_threshold_lower"]
+            )
+            or
+            (
+                surrounding_info["usual_threshold_upper"]
+                and transaction["amount"] > surrounding_info["usual_threshold_upper"]
+            )
+        )
 
 def check_merchant_type_suspicious_range(transaction, surrounding_info):
     """ 6. Transactions far exceed normal range for merchant type -> suspicious  """
     # Note that lower and upper thresholds may be NULL
-    if (surrounding_info["suspicious_threshold_lower"]
-        and transaction["amount"] < surrounding_info["suspicious_threshold_lower"]
-        ):
-        return True
-    if (surrounding_info["suspicious_threshold_upper"]
-        and transaction["amount"] > surrounding_info["suspicious_threshold_upper"]
-        ):
-        return True
-    return False
+    return (
+            (
+                surrounding_info["suspicious_threshold_lower"]
+                and transaction["amount"] < surrounding_info["suspicious_threshold_lower"]
+            )
+            or
+            (
+                surrounding_info["suspicious_threshold_upper"]
+                and transaction["amount"] > surrounding_info["suspicious_threshold_upper"]
+            )
+        )

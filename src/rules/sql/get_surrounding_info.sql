@@ -30,9 +30,8 @@ last_transaction AS (
   WHERE 
     transactions.sender_bsb = %(sender_bsb)s
     AND transactions.sender_account_number = %(sender_account_number)s
-    AND transactions.transaction_time <=  %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
-  ORDER BY 
-     transactions.transaction_time DESC 
+    AND transactions.transaction_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
+  ORDER BY transactions.transaction_time DESC 
   LIMIT 1
 )
 SELECT json_build_object(
@@ -53,22 +52,22 @@ SELECT json_build_object(
   'last_transaction_longitude', last_transaction.sender_longitude,
   'last_transaction_lattitude', last_transaction.sender_latitude,
   'is_new_payee', NOT EXISTS(
-      SELECT 
-        transactions.id
-      FROM 
-        transactions
+      SELECT 1
+      FROM transactions
       WHERE 
         transactions.sender_bsb = %(sender_bsb)s
         AND transactions.sender_account_number = %(sender_account_number)s
         AND transactions.receiver_bsb = %(receiver_bsb)s
         AND transactions.receiver_account_number = %(receiver_account_number)s
+        AND transactions.transaction_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
   ),
   'suspicious_threshold_lower', merchant_tags.suspicious_threshold_lower::numeric,
   'usual_threshold_lower', merchant_tags.usual_threshold_lower::numeric,
   'usual_threshold_upper', merchant_tags.usual_threshold_upper::numeric,
   'suspicious_threshold_upper', merchant_tags.suspicious_threshold_upper::numeric
 )
-FROM period_spending
-CROSS JOIN sender_entity
-LEFT JOIN merchant_tags ON merchant_tags.id = %(merchant_tags)s -- These two may be NULL
-LEFT JOIN last_transaction ON TRUE;
+FROM 
+  period_spending
+  CROSS JOIN sender_entity
+  LEFT JOIN merchant_tags ON merchant_tags.id = %(merchant_tags)s -- These two may be NULL
+  LEFT JOIN last_transaction ON TRUE;

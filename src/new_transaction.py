@@ -22,7 +22,7 @@ DRYRUN_FLAG = True
 def read_transaction(filename):
     """ Reads in transaction from json file """
     with open(filename, "r", encoding="utf-8") as file:
-        contents = json.load(file, encoding="utf-8")
+        contents = json.load(file)
         return contents
 
 def process_transaction(transaction):

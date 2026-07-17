@@ -3,7 +3,7 @@
 from enum import Enum
 
 class Label(Enum):
-    """ Enum to label transactions following SQL enums  """ 
+    """ Enum to label transactions following SQL enums """
     CONFIRMED_LEGITIMATE = 1
     LEGITIMATE = 2
     UNUSUAL = 3
