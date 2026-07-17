@@ -42,9 +42,7 @@ CREATE TABLE device_sessions (
     entity_id BIGINT NOT NULL REFERENCES entities(id),
     device_id CHAR(64) NOT NULL,  -- alternatively session token 
     session_start_time timestamptz NOT NULL,
-    session_end_time timestamptz,
-
-    CONSTRAINT entity_device_uniqueness UNIQUE (entity_id, device_id)
+    session_end_time timestamptz
 );
 
 CREATE TABLE transactions (
@@ -59,7 +57,7 @@ CREATE TABLE transactions (
     sender_longitude Decimal(9,6) CHECK (sender_longitude >= -180 AND sender_longitude <= 180), -- https://stackoverflow.com/a/1196429
     label transaction_label, -- note this is the most up to date label after any corrections
     merchant_tags BIGINT REFERENCES merchant_tags(id),
-    session_id BIGINT NOT NULL REFERENCES device_sessions(id),
+    device_id CHAR(64) NOT NULL,
 
     FOREIGN KEY (sender_bsb, sender_account_number) REFERENCES accounts(bsb, account_number), -- potentially somehow check that at least one of sender/receiver is internal_account
     FOREIGN KEY (receiver_bsb, receiver_account_number) REFERENCES accounts(bsb, account_number)
