@@ -11,5 +11,5 @@ def populate_data():
     Populates the database with synthetic data.
     """
     db = NeonDB()
-    db.run_sql_file(SQL_DIR / "clear_tables.sql")
-    db.run_sql_file(SQL_DIR / "synthetic_population.sql")
+    db.execute(db.read_sql_file(SQL_DIR / "clear_tables.sql"))
+    db.execute(db.read_sql_file(SQL_DIR / "synthetic_population.sql"))

@@ -18,7 +18,7 @@ MODEL_SUSPICIOUS_THRESHOLD = 0.9
 DRYRUN_FLAG = True 
 
 # For now this will just read in the new transaction from a json file
-# Ideally for the ifnal demo the user would be able to enter a transaction through the frontend UI
+# Ideally for the final demo the user would be able to enter a transaction through the frontend UI
 # Which would send the transaction in a JSON format to the backend which can then call this function
 def read_transaction(filename):
     with open(filename, "r") as file:

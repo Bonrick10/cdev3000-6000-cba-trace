@@ -3,6 +3,7 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+import sys
 
 load_dotenv()
 class NeonDB:
@@ -24,29 +25,17 @@ class NeonDB:
         """
         return psycopg2.connect(self.db_url, cursor_factory=RealDictCursor)
 
-    def run_sql_file(self, filepath):
+    def read_sql_file(self, filepath):
         """
-        Executes a .sql file against the Neon database.
-        Useful for clearing tables, populating merchant tags, etc.
+        Reads an SQL file into a string and returns it
+        Can then be passed into query() and execute()
         """
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"SQL file not found: {filepath}")
 
         with open(filepath, "r", encoding="utf-8") as f:
             sql = f.read()
-
-        conn = self.connect()
-        try:
-            with conn.cursor() as cur:
-                cur.execute(sql)
-            conn.commit()
-            print(f"[OK] Executed SQL file: {filepath}")
-        except Exception as e:
-            conn.rollback()
-            print(f"[ERROR] Failed executing {filepath}: {e}")
-            raise
-        finally:
-            conn.close()
+            return sql
 
     def query(self, sql, params=None):
         """
@@ -69,9 +58,10 @@ class NeonDB:
             with conn.cursor() as cur:
                 cur.execute(sql, params)
             conn.commit()
+            print(f"[OK] Executed SQL file: {filepath}")
         except Exception as e:
             conn.rollback()
-            print(f"[ERROR] SQL execution failed: {e}")
+            print(f"[ERROR] SQL execution failed: {e}", file=sys.stderr)
             raise
         finally:
             conn.close()
