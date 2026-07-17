@@ -1,9 +1,9 @@
 """Database connection utilities for Neon/Postgres."""
 import os
+import sys
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
-import sys
 
 load_dotenv()
 class NeonDB:
@@ -58,7 +58,7 @@ class NeonDB:
             with conn.cursor() as cur:
                 cur.execute(sql, params)
             conn.commit()
-            print(f"[OK] Executed SQL file: {filepath}")
+            print("[OK] Executed SQL command")
         except Exception as e:
             conn.rollback()
             print(f"[ERROR] SQL execution failed: {e}", file=sys.stderr)
