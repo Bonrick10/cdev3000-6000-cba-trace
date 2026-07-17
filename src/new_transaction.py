@@ -9,9 +9,7 @@
 import sys
 import json
 from label import Label
-sys.path.append('.') 
-from db import get_transaction_surrounding_info
-from rules import check_rules
+from rules.rules import check_rules
 
 MODEL_UNUSUAL_THRESHOLD = 0.7
 MODEL_SUSPICIOUS_THRESHOLD = 0.9
@@ -28,9 +26,6 @@ def read_transaction(filename):
         return contents
 
 def process_transaction(transaction):
-    surrounding_info = get_transaction_surrounding_info(transaction)
-    print(surrounding_info)
+    ruleset_result = check_rules(transaction)
 
-    ruleset_result = check_rules(transaction, surrounding_info)
-
-process_transaction(read_transaction("fraud_detection_system/test_new_transaction.json"))
+process_transaction(read_transaction("src/test_new_transaction.json"))
