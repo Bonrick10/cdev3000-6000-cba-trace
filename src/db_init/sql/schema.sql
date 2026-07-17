@@ -15,7 +15,7 @@ CREATE TABLE branches (
 CREATE TABLE accounts (
     bsb INTEGER REFERENCES branches(bsb),
     account_number INTEGER CHECK (account_number > 0), -- not a set amount of digit range for account number
-    entity_id BIGINT REFERENCES entities(id),
+    entity_id BIGINT REFERENCES entities(id) NOT NULL,
     account_name VARCHAR(64),
     funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY) DEFAULT 0.0::MONEY ,
 
