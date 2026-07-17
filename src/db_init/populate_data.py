@@ -1,6 +1,6 @@
 """ Data Population Module """
-from utils.db import NeonDB
 from pathlib import Path
+from utils.db import NeonDB
 
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
