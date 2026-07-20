@@ -51,7 +51,7 @@ INSERT INTO merchant_tags (
     suspicious_threshold_upper
 )
 VALUES
-(5411, 'Groceries',                 1.00,      5.00,      250.00,     1000.00),
+(5411, 'Groceries',                 1.00,     10.00,      250.00,     1000.00),
 (5541, 'Fuel Station',              3.00,     20.00,      180.00,      500.00),
 (5812, 'Restaurant',                2.00,     10.00,      200.00,      750.00),
 (5814, 'Fast Food',                 1.00,      5.00,       40.00,      200.00),

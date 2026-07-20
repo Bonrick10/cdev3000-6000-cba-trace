@@ -1,4 +1,4 @@
 """ Main Module """
-from db_init.populate_data import populate_data
+from db_init.populate_data import generate_seed_data
 
-populate_data()
+generate_seed_data()
