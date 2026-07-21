@@ -13,7 +13,7 @@ import random
 import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Tuple, List, Any
-
+from utils.db import NeonDB
 
 # ---------------------------------------------------------------------------
 # Merchant amount profiles
@@ -170,6 +170,36 @@ def choose_receiver(seed_account: Any,
     other = random.choice(accounts)
     return other.bsb, other.account_number
 
+def get_known_payees(db, seed_account) -> set:
+    sender_bsb = seed_account.bsb
+    sender_acc = seed_account.account_number
+    
+    db = NeonDB()
+
+    rows = db.query(
+        """
+        SELECT DISTINCT receiver_bsb, receiver_account_number
+        FROM transactions
+        WHERE sender_bsb = %(bsb)s
+          AND sender_account_number = %(acc)s;
+        """,
+        {"bsb": sender_bsb, "acc": sender_acc}
+    )
+
+    return {(row["receiver_bsb"], row["receiver_account_number"]) for row in rows}
+
+def split_payees(accounts, known_payees):
+    known = []
+    new = []
+
+    for acc in accounts:
+        key = (acc.bsb, acc.account_number)
+        if key in known_payees:
+            known.append(acc)
+        else:
+            new.append(acc)
+
+    return known, new
 
 # ---------------------------------------------------------------------------
 # Location generation
@@ -211,7 +241,7 @@ def generate_location(seed_account: Any) -> Tuple[float, float]:
 # Device selection
 # ---------------------------------------------------------------------------
 
-def choose_device(seed_account: Any) -> str:
+def choose_device(seed_account: Any, devices: List[Any]) -> str:
     """
     Select a device ID for a transaction.
 
@@ -223,13 +253,16 @@ def choose_device(seed_account: Any) -> str:
     """
     r = random.random()
 
+    # TODO: Implement logic to select a device based on known devices and probabilities.
+    # For now, we will randomly select a device from the provided list.
+    # 90% chance of using a previous device, 8% chance of using a new device, 2% chance of using a random device
     if r < 0.90:
-        return seed_account.primary_device
+        return random.choice(devices).device_id
 
     if r < 0.98:
-        return seed_account.secondary_device
+        return random.choice(devices).device_id
 
-    return generate_random_device_id()
+    return random.choice(devices).device_id
 
 
 def generate_random_device_id() -> str:
