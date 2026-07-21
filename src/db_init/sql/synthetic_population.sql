@@ -22,13 +22,42 @@ SELECT
     date '1950-01-01' + (random() * (date '2000-12-31' - date '1950-01-01'))::int AS date_of_birth
 FROM generate_series(1, 50) g;
 
+INSERT INTO accounts (bsb, account_number, entity_id, funds, is_merchant, merchant_tag)
+SELECT
+    b.bsb,
+    (100000000 + (g * 7919) % 900000000) AS account_number,
+    e.id,
+    (random() * 10000)::numeric(10,2) AS funds,
+    CASE WHEN g <= 400 THEN FALSE ELSE TRUE END AS is_merchant,
+    CASE WHEN g > 400 THEN m.id END AS merchant_tag
+FROM generate_series(1, 500) g
+CROSS JOIN LATERAL (
+    SELECT bsb
+    FROM branches
+    ORDER BY random() + g
+    LIMIT 1
+) b
+CROSS JOIN LATERAL (
+    SELECT id
+    FROM entities
+    ORDER BY random() + g
+    LIMIT 1
+) e
+CROSS JOIN LATERAL (
+    SELECT id
+    FROM merchant_tags
+    ORDER BY random() + g
+    LIMIT 1
+) m
+;
+
 INSERT INTO accounts (bsb, account_number, entity_id, funds)
 SELECT
     b.bsb,
     (100000000 + (g * 7919) % 900000000) AS account_number,
     e.id,
     (random() * 10000)::numeric(10,2) AS funds
-FROM generate_series(1, 500) g
+FROM generate_series(1, 400) g
 CROSS JOIN LATERAL (
     SELECT bsb
     FROM branches
@@ -41,6 +70,9 @@ CROSS JOIN LATERAL (
     ORDER BY random() + g  -- forces correlation
     LIMIT 1
 ) e;
+
+
+
 
 INSERT INTO merchant_tags (
     id,

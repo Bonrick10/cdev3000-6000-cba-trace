@@ -17,13 +17,14 @@ CREATE TABLE accounts (
     account_number INTEGER CHECK (account_number > 0), -- not a set amount of digit range for account number
     entity_id BIGINT REFERENCES entities(id) NOT NULL,
     account_name VARCHAR(64),
-    funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY) DEFAULT 0.0::MONEY ,
-
+    funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY) DEFAULT 0.0::MONEY,
+    is_merchant BOOLEAN NOT NULL DEFAULT FALSE,
+    merchant_tag BIGINT REFERENCES merchant_tags(id),
     PRIMARY KEY (bsb, account_number)
 );
 
 CREATE TABLE merchant_tags (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT PRIMARY KEY,
     merchant_category VARCHAR(64) NOT NULL,
     suspicious_threshold_lower MONEY CHECK (suspicious_threshold_lower >= 0.0::MONEY) NOT NULL,
     usual_threshold_lower MONEY CHECK (usual_threshold_lower >= 0.0::MONEY) NOT NULL,
