@@ -15,52 +15,209 @@ from datetime import datetime, timedelta
 from typing import Dict, Tuple, List, Any
 from utils.db import NeonDB
 
-# ---------------------------------------------------------------------------
-# Merchant amount profiles
-# ---------------------------------------------------------------------------
+THRESHOLD_LOW_TXNS = 5
+THRESHOLD_YOUNG_ACC = timedelta(days=15)
 
-MERCHANT_AMOUNT_PROFILES: Dict[str, Tuple[int, int, float]] = {
-    "Groceries": (10, 250, 0.70),
-    "Fuel Station": (20, 180, 0.80),
-    "Restaurant": (10, 200, 0.85),
-    "Fast Food": (5, 40, 0.95),
-    "Coffee Shop": (3, 25, 0.98),
-    "Department Store": (20, 600, 0.70),
-    "Electronics": (50, 2500, 0.40),
-    "Online Marketplace": (10, 800, 0.60),
-    "Pharmacy": (5, 150, 0.85),
-    "Medical Services": (40, 600, 0.50),
-    "Hospital": (200, 10000, 0.20),
-    "Hotel": (100, 1200, 0.30),
-    "Airline": (100, 2500, 0.20),
-    "Public Transport": (2, 30, 0.95),
-    "Taxi/Rideshare": (8, 120, 0.85),
-    "Subscription Service": (5, 80, 0.90),
-    "Streaming Service": (5, 40, 0.95),
-    "Utility Bills": (30, 400, 0.60),
-    "Telecommunications": (20, 200, 0.70),
-    "Insurance": (50, 700, 0.50),
-    "Government Services": (20, 1000, 0.40),
-    "Education": (50, 3000, 0.30),
-    "Charity": (5, 250, 0.80),
-    "ATM Withdrawal": (20, 500, 0.70),
-    "Cash Advance": (50, 800, 0.50),
-    "Jewellery": (100, 5000, 0.30),
-    "Luxury Retail": (200, 4000, 0.20),
-    "Gaming": (5, 100, 0.85),
-    "Liquor Store": (10, 150, 0.85),
-    "Hardware Store": (20, 800, 0.60),
-    "Home Improvement": (50, 3000, 0.40),
-    "Pet Supplies": (10, 250, 0.75),
-    "Sporting Goods": (20, 700, 0.60),
-    "Beauty & Cosmetics": (10, 250, 0.80),
-    "Bookstore": (5, 100, 0.90),
-    "Clothing": (20, 600, 0.70),
-    "Convenience Store": (2, 80, 0.95),
-    "Travel Agency": (200, 5000, 0.20),
-    "Digital Services": (5, 200, 0.85),
-    "Cryptocurrency Exchange": (50, 5000, 0.30),
-}
+def gen_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+    """
+    Generate a transaction based on the seed account and its history.
+    """
+    r = random.random()
+
+    if r < 0.004:
+        gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+    elif r < 0.010:
+        gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+    else:
+        gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+
+def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+    """
+    Generate a realistic legitimate transaction.
+    Behaviour:
+    - normal merchant categories
+    - normal amounts
+    - normal device
+    - normal location cluster
+    - normal time-of-day
+    - known payees (?)
+    """
+
+    first_txn_time = seed_acc_txns[-1]["transaction_time"] if len(seed_acc_txns) > 0 else timestamp["txn_time"]
+    age = timestamp["txn_time"] - first_txn_time
+    if len(seed_acc_txns) > THRESHOLD_LOW_TXNS or age > THRESHOLD_YOUNG_ACC:
+        r = random.random()
+        if r < 0.80:
+            receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_any_merchant_receiver(
+                seed_account=seed_account,
+                merchants=merchants
+        )
+        else:
+            receiver_bsb, receiver_acc, amount = gen_tools.choose_any_p2p_receiver(
+                seed_account=seed_account,
+                accounts=accounts
+            )
+            merchant_tag = None
+    
+        lat, lon = gen_tools.gen_rand_loc(seed_account)
+        device_id = gen_tools.choose_any_device(seed_account, devices)
+
+    else:
+        r = random.random()
+        if r < 0.80:
+            receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_known_merchant_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                merchants=merchants
+        )
+        else:
+            receiver_bsb, receiver_acc, amount = gen_tools.choose_known_p2p_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                accounts=accounts
+            )
+            merchant_tag = None
+        lat, lon = gen_tools.gen_near_loc(seed_account, seed_acc_txns)
+        device_id = gen_tools.choose_known_device(seed_account, seed_acc_txns, devices)
+    
+    txn = {
+        "sender_bsb": seed_account.bsb,
+        "sender_account_number": seed_account.account_number,
+        "receiver_bsb": receiver_bsb,
+        "receiver_account_number": receiver_acc,
+        "amount": amount,
+        "transaction_time": timestamp["txn_time"],
+        "sender_latitude": lat,
+        "sender_longitude": lon,
+        "merchant_tags": merchant_tag,
+        "device_id": device_id
+    }
+    gen_tools.insert_txn(txn, db)
+
+def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+    """
+    Generate a mildly abnormal transaction.
+    Behaviour:
+    - new device OR new payee OR slightly large amount
+    - slightly unusual merchant category
+    - slightly unusual location (work or small travel)
+    - unusual time-of-day (early morning or late night)
+    """
+
+    
+    # 50% chance of new payee
+    if random.random() < 0.5:
+        receiver = random.choice(accounts)
+        receiver_bsb, receiver_acc = receiver.bsb, receiver.account_number
+        if receiver.is_merchant:
+            merchant_tag = receiver.merchant_category
+            min_amt, max_amt, _ = gen_tools.MERCHANT_AMOUNT_PROFILES[merchant_tag]
+            amount = round(random.uniform(min_amt, max_amt), 2)
+        else:
+            merchant_tag = None
+            amount = round(random.uniform(5, 500), 2)
+    else:
+        r = random.random()
+        if r < 0.80:
+            receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_known_merchant_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                merchants=merchants
+        )
+        else:
+            receiver_bsb, receiver_acc, amount = gen_tools.choose_known_p2p_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                accounts=accounts
+            )
+            merchant_tag = None
+
+    # 30% chance of unusual location
+    if random.random() < 0.3:
+        lat = seed_account.home_location[0] + random.uniform(-0.1, 0.1)
+        lon = seed_account.home_location[1] + random.uniform(-0.1, 0.1)
+    else:
+        lat, lon = gen_tools.generate_location(seed_account)
+
+    # 20% chance of unseen device
+    if random.random() < 0.2:
+        device_id = gen_tools.generate_random_device_id()
+    else:
+        device_id = gen_tools.choose_device_from_seed(seed_account, devices)
+
+    return {
+        "sender_bsb": seed_account.bsb,
+        "sender_account_number": seed_account.account_number,
+        "receiver_bsb": receiver_bsb,
+        "receiver_account_number": receiver_acc,
+        "amount": amount,
+        "transaction_time": timestamp["txn_time"],
+        "sender_latitude": lat,
+        "sender_longitude": lon,
+        "merchant_tags": merchant_tag,
+        "device_id": device_id
+    }
+
+def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+    """
+    Generate a rule-breaking suspicious transaction.
+    Behaviour:
+    - impossible travel (far location)
+    - very large amount
+    - new payee
+    - unseen device
+    - suspicious merchant category
+    - unusual time-of-day
+    """
+
+    if random.random() > 0.6:
+        receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_known_merchant_receiver(
+            seed_account=seed_account,
+            seed_acc_txns=seed_acc_txns,
+            merchants=merchants
+        )
+    else:
+        receiver_bsb, receiver_acc, amount = gen_tools.choose_known_p2p_receiver(
+            seed_account=seed_account,
+            seed_acc_txns=seed_acc_txns,
+            accounts=accounts
+        )
+        merchant_tag = None
+
+    # force large amount
+    min_amt, max_amt, _ = MERCHANT_AMOUNT_PROFILES[merchant_tag]
+    amount = round(random.uniform(max_amt * 0.7, max_amt), 2)
+
+    # force new payee
+    receiver = random.choice(accounts)
+    receiver_bsb, receiver_acc = receiver.bsb, receiver.account_number
+
+    # impossible travel: far outside normal cluster
+    lat = seed_account.home_location[0] + random.uniform(5.0, 25.0)
+    lon = seed_account.home_location[1] + random.uniform(5.0, 25.0)
+
+    # suspicious time-of-day
+    timestamp = datetime.now().replace(
+        hour=random.choice([0, 1, 2, 3]),
+        minute=random.randint(0, 59),
+        second=random.randint(0, 59)
+    )
+
+    # unseen device
+    device_id = gen_tools.generate_random_device_id()
+
+    return {
+        "sender_bsb": seed_account.bsb,
+        "sender_account_number": seed_account.account_number,
+        "receiver_bsb": receiver_bsb,
+        "receiver_account_number": receiver_acc,
+        "amount": amount,
+        "transaction_time": timestamp,
+        "sender_latitude": lat,
+        "sender_longitude": lon,
+        "merchant_tags": merchant_tag,
+        "device_id": device_id
+    }
 
 
 # ---------------------------------------------------------------------------
