@@ -1,82 +1,79 @@
 """ Checks the transaction against the current rules in ruleset"""
-import collections
-from pathlib import Path
 from datetime import datetime, timedelta
 from geopy.distance import geodesic
-from utils.db import NeonDB
+from rules.rule_enum import RuleEnum
 from label import Label
-
-BASE_DIR = Path(__file__).resolve().parent
-SQL_DIR = BASE_DIR / "sql"
 
 IMPOSSIBLE_TRAVEL_THRESHOLD = 500 # Note that this is km/hr
 NEW_PAYEE_UNUSUAL_THRESHOLD = 10000
 FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD = 5
 FRESH_ACCOUNT_AGE_THRESHOLD_DAYS = 15
 
-def check_rules(transaction, dryrun_flag = True):
+def check_rules(transaction, surrounding_info):
     """ Checks the transaction against the current rules in ruleset"""
-    db = NeonDB()
-    print(transaction)
-    # convert non entries into None - especially for merchant_tags which may not be provided
-    surrounding_info = db.query(
-        db.read_sql_file(SQL_DIR / "get_surrounding_info.sql"),
-        collections.defaultdict(lambda: None, transaction
-        ))[0]["json_build_object"]
-    print(surrounding_info)
+    rule_violations = []
+    unseen_device_retval = check_unseen_device(transaction, surrounding_info)
 
-    # Check Suspicious rules first and Instant Exit if fails
-    if (
-        check_impossible_travel(transaction, surrounding_info)
-        or check_merchant_type_suspicious_range(transaction, surrounding_info)
-        ):
-        return Label.SUSPICIOUS
+    # Check suspcious rules first 
+    for function in [
+        check_impossible_travel,
+        check_merchant_type_suspicious_range
+    ]:
+        retval = function(transaction, surrounding_info)
+        if retval is not None: 
+            rule_violations.append(retval)
 
+    if len(rule_violations) > 0: 
+        # if nonempty then rule instant exit
+        print(f"Ruleset Label: Suspicious. Rule violation(s): {rule_violations}")
+        return (Label.SUSPICIOUS, unseen_device_retval is not None)
+    
     # Then check unusual rules, but don't instant fail
-    return (Label.UNUSUAL
-        if (
-            check_unseen_device(transaction, surrounding_info, db, dryrun_flag)
-            or check_exceed_weekly_total(transaction, surrounding_info)
-            or check_large_amount_to_new_payee(transaction, surrounding_info)
-            or check_merchant_type_unusual_range(transaction, surrounding_info)
-        ) else Label.LEGITIMATE)
+    if unseen_device_retval is not None: 
+        rule_violations.append(unseen_device_retval)
 
-def check_unseen_device(transaction, surrounding_info, db, dryrun_flag = True):
+    for function in [
+        check_exceed_7d_total,
+        check_large_amount_to_new_payee,
+        check_merchant_type_unusual_range
+    ]:
+        retval = function(transaction, surrounding_info)
+        if retval is not None: 
+            rule_violations.append(retval)
+
+    if len(rule_violations) > 0:
+        print(f"Ruleset Label: Unusual. Rule violation(s): {rule_violations}")
+        return (Label.UNUSUAL, unseen_device_retval is not None)
+    else: 
+        print(f"Ruleset Label: Legitimate.")
+        return (Label.LEGITIMATE, unseen_device_retval is not None)
+
+def check_unseen_device(transaction, surrounding_info):
     """ 
     1. Transaction made from a previously unseen device associated with the customer -> unusual
     """
     if is_fresh_account(transaction, surrounding_info):
         # Skip check for fresh accounts
-        return False
+        return None
+    return RuleEnum.UNSEEN_DEVICE if not surrounding_info["device_seen_before"] else None
 
-    if not surrounding_info["device_seen_before"] and not dryrun_flag:
-        # If device and entity combination not seen before, add a new session for this combination
-        # TODO: Also add session if combination seen before but expired
-        db.execute("""
-            INSERT INTO 
-                device_sessions (entity_id, device_id, session_start_time, session_end_time)
-            VALUES (%s, %s, %s, NULL)
-        """, [
-            surrounding_info["entity_id"],
-            transaction["device_id"],
-            transaction["transaction_time"]
-        ])
-    return not surrounding_info["device_seen_before"]
-
-def check_exceed_weekly_total(transaction, surrounding_info):
+def check_exceed_7d_total(transaction, surrounding_info):
     if is_fresh_account(transaction, surrounding_info):
         # Skip check for fresh accounts
-        return False 
+        return None 
 
     """ 2. 24 hour spending exceeds customer's cumulative 7 day total -> unusual """
-    return (transaction["amount"] + surrounding_info["24_hour_spending"]
+    return (RuleEnum.EXCEED_7D_TOTAL if 
+            (transaction["amount"] + surrounding_info["24_hour_spending"]
             > surrounding_info["7_day_spending"])
+            else None)
+
 
 def check_impossible_travel(transaction, surrounding_info):
     """ 3. Two transactions made more than 500km apart per hour -> suspicious """
-    # If no last transaction, skip this check
     if surrounding_info["last_transaction_time"] is None:
-        return False
+        # If no last transaction, skip this check
+        return None 
     distance = geodesic(
         (
             surrounding_info["last_transaction_latitude"],
@@ -94,21 +91,26 @@ def check_impossible_travel(transaction, surrounding_info):
 
     # Should not happen but avoid division by zero
     if delta_time_hours == 0:
-        return False
-    return distance / delta_time_hours > IMPOSSIBLE_TRAVEL_THRESHOLD
+        return None
+    return (RuleEnum.IMPOSSIBLE_TRAVEL 
+            if distance / delta_time_hours > IMPOSSIBLE_TRAVEL_THRESHOLD
+            else None)
 
 def check_large_amount_to_new_payee(transaction, surrounding_info):
     if is_fresh_account(transaction, surrounding_info):
         # Skip check for fresh accounts
-        return False 
+        return None 
 
     """ 4. Transactions in excess of $10 000 to new payees -> unusual """
-    return surrounding_info["is_new_payee"] and transaction["amount"] > NEW_PAYEE_UNUSUAL_THRESHOLD
+    return (RuleEnum.LARGE_AMOUNT_NEW_PAYEE
+        if surrounding_info["is_new_payee"] and transaction["amount"] > NEW_PAYEE_UNUSUAL_THRESHOLD
+        else None )
 
 def check_merchant_type_unusual_range(transaction, surrounding_info):
     """ 5. Transactions outside of normal range for merchant type -> unusual """
     # Note that lower and upper thresholds may be NULL
-    return (
+    return (RuleEnum.MERCHANT_TYPE_UNUSUAL_RANGE 
+        if (
             (
                 surrounding_info["usual_threshold_lower"]
                 and transaction["amount"] < surrounding_info["usual_threshold_lower"]
@@ -118,12 +120,13 @@ def check_merchant_type_unusual_range(transaction, surrounding_info):
                 surrounding_info["usual_threshold_upper"]
                 and transaction["amount"] > surrounding_info["usual_threshold_upper"]
             )
-        )
+        ) else None )
 
 def check_merchant_type_suspicious_range(transaction, surrounding_info):
     """ 6. Transactions far exceed normal range for merchant type -> suspicious  """
     # Note that lower and upper thresholds may be NULL
-    return (
+    return (RuleEnum.MERCHANT_TYPE_SUSPICIOUS_RANGE 
+        if (
             (
                 surrounding_info["suspicious_threshold_lower"]
                 and transaction["amount"] < surrounding_info["suspicious_threshold_lower"]
@@ -133,7 +136,7 @@ def check_merchant_type_suspicious_range(transaction, surrounding_info):
                 surrounding_info["suspicious_threshold_upper"]
                 and transaction["amount"] > surrounding_info["suspicious_threshold_upper"]
             )
-        )
+        ) else None)
 
 def is_fresh_account(transaction, surrounding_info):
     """

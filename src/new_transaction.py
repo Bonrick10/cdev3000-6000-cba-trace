@@ -6,9 +6,15 @@
         has many cases of fraud
     If any point fails then the transaction is blocked, otherwise it is allowed to go through
 """
+import collections
+from pathlib import Path
 import json
 from label import Label
 from rules.rules import check_rules
+from utils.db import NeonDB
+
+BASE_DIR = Path(__file__).resolve().parent
+SQL_DIR = BASE_DIR / "sql"
 
 MODEL_UNUSUAL_THRESHOLD = 0.7
 MODEL_SUSPICIOUS_THRESHOLD = 0.9
@@ -30,22 +36,50 @@ def process_transaction(transaction):
         Fraud detection pipeline that determines whether a transaction is fraud or not
         Using ruleset, large and small models
     """
-    ruleset_result = check_rules(transaction, DRYRUN_FLAG)
-    if ruleset_result == Label.SUSPICIOUS:
+    db = NeonDB()
+    # convert non entries into None - especially for merchant_tags which may not be provided
+    surrounding_info = db.query(
+        db.read_sql_file(SQL_DIR / "get_surrounding_info.sql"),
+        collections.defaultdict(lambda: None, transaction
+        ))[0]["json_build_object"]
+    print(surrounding_info)
+
+    ruleset_label, is_unseen_device = check_rules(transaction, surrounding_info)
+    if ruleset_label == Label.SUSPICIOUS:
+        insert_db_entries(db, transaction, surrounding_info, Label.SUSPICIOUS, is_unseen_device)
         return Label.SUSPICIOUS
 
     # Call Large Model
 
     # Call Small Model
 
+    # TODO: Set to most severe of ruleset, large and small model verdict
+    final_label = ruleset_label
+    insert_db_entries(db, transaction, surrounding_info, final_label, is_unseen_device)
+    print(f"Final label: {final_label}")
+    return final_label
 
-    # By now suspicious transactions would have exited early leaving only unusual and legitimate
-    if not DRYRUN_FLAG:
-        # Insert new transaction into db
+def insert_db_entries(db, transaction, surrounding_info, label, is_unseen_device):
+    if DRYRUN_FLAG:
+        return
+    
+    # TODO: Insert transaction incl fraud ones 
+
+    if label == label.LEGITIMATE or label == Label.UNUSUAL:
+        # TODO: Move funds from sender to receiver 
         pass
     
-    # TODO: Set to most severe of ruleset, large and small model verdict
-    final_result = ruleset_result
-    return final_result
+    if is_unseen_device:
+        # If device and entity combination not seen before, add a new session for this combination
+        # TODO: Also add session if combination seen before but expired
+        db.execute("""
+            INSERT INTO 
+                device_sessions (entity_id, device_id, session_start_time, session_end_time)
+            VALUES (%s, %s, %s, NULL)
+        """, [
+            surrounding_info["entity_id"],
+            transaction["device_id"],
+            transaction["transaction_time"]
+        ])
 
 process_transaction(read_transaction("src/test_new_transaction.json"))
