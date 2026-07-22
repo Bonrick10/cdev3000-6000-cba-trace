@@ -40,7 +40,7 @@ def generate_legitimate_transaction(seed_account, accounts, merchants, devices):
     - normal device
     - normal location cluster
     - normal time-of-day
-    - known payees
+    - known payees (?)
     """
     
     r = random.random()
@@ -96,7 +96,7 @@ def generate_unusual_transaction(seed_account, accounts, merchants, devices):
         lat = seed_account.home_location[0] + random.uniform(-0.1, 0.1)
         lon = seed_account.home_location[1] + random.uniform(-0.1, 0.1)
     else:
-        lat, lon = generate_location(seed_account)
+        lat, lon = gen_tools.generate_location(seed_account)
 
     # unusual time-of-day
     timestamp = datetime.now().replace(
@@ -107,9 +107,9 @@ def generate_unusual_transaction(seed_account, accounts, merchants, devices):
 
     # 20% chance of unseen device
     if random.random() < 0.2:
-        device_id = generate_random_device_id()
+        device_id = gen_tools.generate_random_device_id()
     else:
-        device_id = seed_account.primary_device
+        device_id = gen_tools.choose_device_from_seed(seed_account, devices)
 
     return {
         "sender_bsb": seed_account.bsb,
@@ -135,15 +135,6 @@ def generate_suspicious_transaction(seed_account, accounts, merchants, merchant_
     - suspicious merchant category
     - unusual time-of-day
     """
-
-    # pick a merchant category known for high-risk behaviour
-    suspicious_tags = [
-        "Cryptocurrency Exchange",
-        "Luxury Retail",
-        "Jewellery",
-        "Travel Agency",
-        "Electronics"
-    ]
     merchant_tag = random.choice(suspicious_tags)
 
     # force large amount
