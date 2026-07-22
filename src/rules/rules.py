@@ -43,7 +43,7 @@ def check_rules(transaction, surrounding_info):
     if len(rule_violations) > 0:
         print(f"Ruleset Label: Unusual. Rule violation(s): {rule_violations}")
         return (Label.UNUSUAL, unseen_device_retval is not None)
-    
+
     print("Ruleset Label: Legitimate.")
     return (Label.LEGITIMATE, unseen_device_retval is not None)
 
