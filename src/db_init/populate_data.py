@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta
 from utils.db import NeonDB
 from rules.rules import check_rules
-import utils.generator_tools as gen_tools
+import utils.gen_tools as gen_tools
 
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
