@@ -60,15 +60,16 @@ def process_transaction(transaction):
     return final_label
 
 def insert_db_entries(db, transaction, surrounding_info, label, is_unseen_device):
+    """ Insert appropriate db entries for new transaction if not a dryrun """
     if DRYRUN_FLAG:
         return
-    
-    # TODO: Insert transaction incl fraud ones 
 
-    if label == label.LEGITIMATE or label == Label.UNUSUAL:
-        # TODO: Move funds from sender to receiver 
+    # TODO: Insert transaction incl fraud ones
+
+    if label != Label.SUSPICIOUS:
+        # TODO: Move funds from sender to receiver
         pass
-    
+
     if is_unseen_device:
         # If device and entity combination not seen before, add a new session for this combination
         # TODO: Also add session if combination seen before but expired
