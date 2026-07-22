@@ -21,7 +21,19 @@ sender_entity AS (
       accounts.bsb = %(sender_bsb)s
       AND accounts.account_number = %(sender_account_number)s
 ),
+transaction_history_metadata AS (
+  SELECT
+    MIN(transactions.transaction_time) AS first_transaction_time,
+    -- MAX(transactions.transaction_time) AS last_transaction_time, -- should be same as below 
+    COUNT(*) AS num_transactions
+  FROM transactions
+   WHERE 
+    transactions.sender_bsb = %(sender_bsb)s
+    AND transactions.sender_account_number = %(sender_account_number)s
+    AND transactions.transaction_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
+),
 last_transaction AS (
+  -- Too cursed to try merge this in with above transaction_history query 
   SELECT 
     transactions.transaction_time,
     transactions.sender_latitude,
@@ -48,9 +60,11 @@ SELECT json_build_object(
   'entity_id', sender_entity.id,
   '24_hour_spending', period_spending."24_hour"::numeric,-- note that this excludes the pending new transaction 
   '7_day_spending', period_spending."7_day"::numeric,
+  'first_transaction_time', transaction_history_metadata.first_transaction_time,
+  'num_transactions', transaction_history_metadata.num_transactions,
   'last_transaction_time', last_transaction.transaction_time,
   'last_transaction_longitude', last_transaction.sender_longitude,
-  'last_transaction_lattitude', last_transaction.sender_latitude,
+  'last_transaction_latitude', last_transaction.sender_latitude,
   'is_new_payee', NOT EXISTS(
       SELECT 1
       FROM transactions
@@ -69,5 +83,6 @@ SELECT json_build_object(
 FROM 
   period_spending
   CROSS JOIN sender_entity
+  CROSS JOIN transaction_history_metadata
   LEFT JOIN merchant_tags ON merchant_tags.id = %(merchant_tags)s -- These two may be NULL
   LEFT JOIN last_transaction ON TRUE;

@@ -38,9 +38,14 @@ def process_transaction(transaction):
 
     # Call Small Model
 
-    if ruleset_result == Label.LEGITIMATE and not DRYRUN_FLAG:
+
+    # By now suspicious transactions would have exited early leaving only unusual and legitimate
+    if not DRYRUN_FLAG:
         # Insert new transaction into db
         pass
-    return ruleset_result
+    
+    # TODO: Set to most severe of ruleset, large and small model verdict
+    final_result = ruleset_result
+    return final_result
 
 process_transaction(read_transaction("src/test_new_transaction.json"))

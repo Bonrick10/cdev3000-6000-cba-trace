@@ -1,7 +1,7 @@
 """ Checks the transaction against the current rules in ruleset"""
 import collections
 from pathlib import Path
-import datetime
+from datetime import datetime, timedelta
 from geopy.distance import geodesic
 from utils.db import NeonDB
 from label import Label
@@ -11,6 +11,8 @@ SQL_DIR = BASE_DIR / "sql"
 
 IMPOSSIBLE_TRAVEL_THRESHOLD = 500 # Note that this is km/hr
 NEW_PAYEE_UNUSUAL_THRESHOLD = 10000
+FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD = 5
+FRESH_ACCOUNT_AGE_THRESHOLD_DAYS = 15
 
 def check_rules(transaction, dryrun_flag = True):
     """ Checks the transaction against the current rules in ruleset"""
@@ -36,13 +38,17 @@ def check_rules(transaction, dryrun_flag = True):
             check_unseen_device(transaction, surrounding_info, db, dryrun_flag)
             or check_exceed_weekly_total(transaction, surrounding_info)
             or check_large_amount_to_new_payee(transaction, surrounding_info)
-            or check_merchant_type_suspicious_range(transaction, surrounding_info)
+            or check_merchant_type_unusual_range(transaction, surrounding_info)
         ) else Label.LEGITIMATE)
 
 def check_unseen_device(transaction, surrounding_info, db, dryrun_flag = True):
     """ 
     1. Transaction made from a previously unseen device associated with the customer -> unusual
     """
+    if is_fresh_account(transaction, surrounding_info):
+        # Skip check for fresh accounts
+        return False
+
     if not surrounding_info["device_seen_before"] and not dryrun_flag:
         # If device and entity combination not seen before, add a new session for this combination
         # TODO: Also add session if combination seen before but expired
@@ -58,6 +64,10 @@ def check_unseen_device(transaction, surrounding_info, db, dryrun_flag = True):
     return not surrounding_info["device_seen_before"]
 
 def check_exceed_weekly_total(transaction, surrounding_info):
+    if is_fresh_account(transaction, surrounding_info):
+        # Skip check for fresh accounts
+        return False 
+
     """ 2. 24 hour spending exceeds customer's cumulative 7 day total -> unusual """
     return (transaction["amount"] + surrounding_info["24_hour_spending"]
             > surrounding_info["7_day_spending"])
@@ -69,7 +79,7 @@ def check_impossible_travel(transaction, surrounding_info):
         return False
     distance = geodesic(
         (
-            surrounding_info["last_transaction_lattitude"],
+            surrounding_info["last_transaction_latitude"],
             surrounding_info["last_transaction_longitude"]
         ),
         (
@@ -78,8 +88,8 @@ def check_impossible_travel(transaction, surrounding_info):
         )
         ).km
     delta_time_hours = (
-        datetime.datetime.fromisoformat(transaction["transaction_time"])
-        - datetime.datetime.fromisoformat(surrounding_info["last_transaction_time"])
+        datetime.fromisoformat(transaction["transaction_time"])
+        - datetime.fromisoformat(surrounding_info["last_transaction_time"])
         ).total_seconds() / 3600
 
     # Should not happen but avoid division by zero
@@ -88,6 +98,10 @@ def check_impossible_travel(transaction, surrounding_info):
     return distance / delta_time_hours > IMPOSSIBLE_TRAVEL_THRESHOLD
 
 def check_large_amount_to_new_payee(transaction, surrounding_info):
+    if is_fresh_account(transaction, surrounding_info):
+        # Skip check for fresh accounts
+        return False 
+
     """ 4. Transactions in excess of $10 000 to new payees -> unusual """
     return surrounding_info["is_new_payee"] and transaction["amount"] > NEW_PAYEE_UNUSUAL_THRESHOLD
 
@@ -120,3 +134,22 @@ def check_merchant_type_suspicious_range(transaction, surrounding_info):
                 and transaction["amount"] > surrounding_info["suspicious_threshold_upper"]
             )
         )
+
+def is_fresh_account(transaction, surrounding_info):
+    """
+        Checks whether an account is considered a new account by checking whether
+            1. Number of transactions < FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD
+            2. First transaction >= current time - FRESH_ACCOUNT_AGE_THRESHOLD_DAYS
+        If it is a fresh account, will bypass some of the rules
+    """
+    if surrounding_info["first_transaction_time"] is None:
+        return True
+    transaction_time = datetime.fromisoformat(transaction["transaction_time"])
+    first_transaction_time = datetime.fromisoformat(surrounding_info["first_transaction_time"])
+    return (
+        surrounding_info["num_transactions"] < FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD
+        # Be advised this is day as in 24 hour not by calendar day at midnight
+        or first_transaction_time >= (
+            transaction_time - timedelta(days=FRESH_ACCOUNT_AGE_THRESHOLD_DAYS) 
+        )
+    )
