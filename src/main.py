@@ -1,4 +1,5 @@
 """ Main Module """
-from db_init.populate_data import generate_seed_data
+import db_init.populate_data as gen_data
 
-generate_seed_data()
+gen_data.generate_seed_data()
+gen_data.gen_all_txns()

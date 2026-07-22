@@ -8,7 +8,11 @@ import utils.generator_tools as gen_tools
 
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
+SRC_DIR = BASE_DIR.parent
+UTILS_DIR = SRC_DIR / "utils"
 
+THRESHOLD_LOW_TXNS = 5
+THRESHOLD_YOUNG_ACC = timedelta(days=15)
 
 def generate_seed_data():
     """
@@ -18,20 +22,37 @@ def generate_seed_data():
     db.run_sql_file(SQL_DIR / "clear_tables.sql")
     db.run_sql_file(SQL_DIR / "synthetic_population.sql")
 
-def generate_transaction(seed_account, accounts, merchants, devices):
+def gen_all_txns():
+    db = NeonDB()
+    db.run_sql_file(UTILS_DIR / "sql" / "timeline.sql")
+    
+    timeline = db.query("SELECT txn_time FROM synthetic_timeline ORDER BY txn_time;")
+    accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
+    merchants = db.query("SELECT * FROM accounts WHERE is_merchant = TRUE;")
+    devices = db.query("SELECT * FROM devices;")
+
+    for timestamp in timeline:
+        seed_account = random.choice(accounts)
+        seed_acc_txns = db.query(
+            """
+            SELECT * FROM transactions WHERE sender_bsb = %(bsb)s AND sender_account_number = %(acc)s ORDER BY transaction_time DESC;
+            """,
+            {"bsb": seed_account.bsb, "acc": seed_account.account_number}
+        )
+        gen_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+
+
+def gen_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
     r = random.random()
 
     if r < 0.004:
-        txn = generate_suspicious_transaction(seed_account, accounts, merchants, devices)
+        gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
     elif r < 0.010:
-        txn = generate_unusual_transaction(seed_account, accounts, merchants, devices)
+        gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
     else:
-        txn = generate_legitimate_transaction(seed_account, accounts, merchants, devices)
+        gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
 
-    txn["label"] = check_rules(txn, dryrun_flag=True).value
-    return txn
-
-def generate_legitimate_transaction(seed_account, accounts, merchants, devices):
+def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
     """
     Generate a realistic legitimate transaction.
     Behaviour:
@@ -42,38 +63,59 @@ def generate_legitimate_transaction(seed_account, accounts, merchants, devices):
     - normal time-of-day
     - known payees (?)
     """
-    
-    r = random.random()
-    if r < 0.80:
-        receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_merchant_receiver(
-            seed_account=seed_account,
-            merchants=merchants
-        )
-    else:
-        receiver_bsb, receiver_acc, amount = gen_tools.choose_p2p_receiver(
-            seed_account=seed_account,
-            accounts=accounts
-        )
-        merchant_tag = None
-    
-    lat, lon = gen_tools.generate_location(seed_account)
-    timestamp = gen_tools.generate_timestamp()
-    device_id = gen_tools.choose_device(seed_account, devices)
 
-    return {
+    first_txn_time = seed_acc_txns[-1]["transaction_time"] if len(seed_acc_txns) > 0 else timestamp["txn_time"]
+    age = timestamp["txn_time"] - first_txn_time
+    if len(seed_acc_txns) > THRESHOLD_LOW_TXNS or age > THRESHOLD_YOUNG_ACC:
+        r = random.random()
+        if r < 0.80:
+            receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_any_merchant_receiver(
+                seed_account=seed_account,
+                merchants=merchants
+        )
+        else:
+            receiver_bsb, receiver_acc, amount = gen_tools.choose_any_p2p_receiver(
+                seed_account=seed_account,
+                accounts=accounts
+            )
+            merchant_tag = None
+    
+        lat, lon = gen_tools.gen_rand_loc(seed_account)
+        device_id = gen_tools.choose_any_device(seed_account, devices)
+
+    else:
+        r = random.random()
+        if r < 0.80:
+            receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_known_merchant_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                merchants=merchants
+        )
+        else:
+            receiver_bsb, receiver_acc, amount = gen_tools.choose_known_p2p_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                accounts=accounts
+            )
+            merchant_tag = None
+        lat, lon = gen_tools.gen_near_loc(seed_account, seed_acc_txns)
+        device_id = gen_tools.choose_known_device(seed_account, seed_acc_txns, devices)
+    
+    txn = {
         "sender_bsb": seed_account.bsb,
         "sender_account_number": seed_account.account_number,
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
-        "transaction_time": timestamp,
+        "transaction_time": timestamp["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
+    gen_tools.insert_txn(txn, db)
 
-def generate_unusual_transaction(seed_account, accounts, merchants, devices):
+def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
     """
     Generate a mildly abnormal transaction.
     Behaviour:
@@ -88,8 +130,28 @@ def generate_unusual_transaction(seed_account, accounts, merchants, devices):
     if random.random() < 0.5:
         receiver = random.choice(accounts)
         receiver_bsb, receiver_acc = receiver.bsb, receiver.account_number
+        if receiver.is_merchant:
+            merchant_tag = receiver.merchant_category
+            min_amt, max_amt, _ = gen_tools.MERCHANT_AMOUNT_PROFILES[merchant_tag]
+            amount = round(random.uniform(min_amt, max_amt), 2)
+        else:
+            merchant_tag = None
+            amount = round(random.uniform(5, 500), 2)
     else:
-        receiver_bsb, receiver_acc = choose_receiver(seed_account, accounts, merchants)
+        r = random.random()
+        if r < 0.80:
+            receiver_bsb, receiver_acc, merchant_tag, amount = gen_tools.choose_known_merchant_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                merchants=merchants
+        )
+        else:
+            receiver_bsb, receiver_acc, amount = gen_tools.choose_known_p2p_receiver(
+                seed_account=seed_account,
+                seed_acc_txns=seed_acc_txns,
+                accounts=accounts
+            )
+            merchant_tag = None
 
     # 30% chance of unusual location
     if random.random() < 0.3:
@@ -97,13 +159,6 @@ def generate_unusual_transaction(seed_account, accounts, merchants, devices):
         lon = seed_account.home_location[1] + random.uniform(-0.1, 0.1)
     else:
         lat, lon = gen_tools.generate_location(seed_account)
-
-    # unusual time-of-day
-    timestamp = datetime.now().replace(
-        hour=random.choice([1, 2, 3, 4, 23]),
-        minute=random.randint(0, 59),
-        second=random.randint(0, 59)
-    )
 
     # 20% chance of unseen device
     if random.random() < 0.2:
@@ -117,14 +172,14 @@ def generate_unusual_transaction(seed_account, accounts, merchants, devices):
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
-        "transaction_time": timestamp,
+        "transaction_time": timestamp["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
 
-def generate_suspicious_transaction(seed_account, accounts, merchants, merchant_tags):
+def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
     """
     Generate a rule-breaking suspicious transaction.
     Behaviour:
@@ -173,7 +228,7 @@ def generate_suspicious_transaction(seed_account, accounts, merchants, merchant_
     }
 
 
-def maybe_generate_correction(transaction):
+def maybe_gen_correction(transaction):
     # 0.1% chance of correction
     if random.random() > 0.001:
         return None

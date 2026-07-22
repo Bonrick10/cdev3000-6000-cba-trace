@@ -273,3 +273,43 @@ def generate_random_device_id() -> str:
         A device ID string.
     """
     return secrets.token_hex(32)
+
+# ----------------------------------------------------------------------------
+# Transaction Insertion
+# ----------------------------------------------------------------------------
+def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
+    """
+    Insert a transaction into the database.
+
+    Args:
+        txn: Dictionary containing transaction details.
+        db: NeonDB instance for database operations.
+    """
+    db.execute(
+        """
+        INSERT INTO transactions (
+            sender_bsb,
+            sender_account_number,
+            receiver_bsb,
+            receiver_account_number,
+            amount,
+            transaction_time,
+            sender_latitude,
+            sender_longitude,
+            merchant_tags,
+            device_id
+        ) VALUES (
+            %(sender_bsb)s,
+            %(sender_account_number)s,
+            %(receiver_bsb)s,
+            %(receiver_account_number)s,
+            %(amount)s,
+            %(transaction_time)s,
+            %(sender_latitude)s,
+            %(sender_longitude)s,
+            %(merchant_tags)s,
+            %(device_id)s
+        );
+        """,
+        txn
+    )
