@@ -24,11 +24,10 @@ def check_rules(transaction, surrounding_info):
             rule_violations.append(retval)
 
     if len(rule_violations) > 0:
-        # if nonempty then rule instant exit
         print(f"Ruleset Label: Suspicious. Rule violation(s): {rule_violations}")
         return (Label.SUSPICIOUS, unseen_device_retval is not None)
 
-    # Then check unusual rules, but don't instant fail
+    # Then check unusual rules
     if unseen_device_retval is not None:
         rule_violations.append(unseen_device_retval)
 
