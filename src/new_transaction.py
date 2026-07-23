@@ -41,6 +41,7 @@ def process_transaction(transaction):
     if ruleset_result == Label.LEGITIMATE and not DRYRUN_FLAG:
         # Insert new transaction into db
         pass
+    print(ruleset_result)
     return ruleset_result
 
 process_transaction(read_transaction("src/test_new_transaction.json"))

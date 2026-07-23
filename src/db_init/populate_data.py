@@ -23,6 +23,7 @@ def gen_all_txns():
     db = NeonDB()
     db.execute(db.read_sql_file(UTILS_DIR / "sql" / "timeline.sql"))
     
+    # 💀 Why do you need to insert into db and then just query it again, just do this in python
     timeline = db.query("SELECT txn_time FROM synthetic_timeline ORDER BY txn_time;")
     accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
     merchants = db.query("SELECT * FROM accounts WHERE is_merchant = TRUE;")

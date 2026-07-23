@@ -1,6 +1,7 @@
 import random
 
 def choose_any_device(seed_account, devices):
+    # TODO: Choose device with start time before transaction time
     return random.choice(devices)["device_id"]
 
 def choose_known_device(seed_account, seed_acc_txns, devices):

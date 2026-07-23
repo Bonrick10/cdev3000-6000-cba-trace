@@ -1,43 +1,43 @@
 Device session 
-- id = 105028
-- entity_id = 147514
-- device_id = c20ad4d76fe97759aa27a0c99bff6710 
-- start_time = 2026-05-24 01:24:11.734022+00
+- id = 117975
+- entity_id = 187109
+- device_id = 8e296a067a37563370ded05f5a3bf3ec 
+- start_time = 22022-09-14 00:00:00+00 (edited to be before transaction)
 - end_time = NULL 
 
 Sender Entity
-- id = 147514
+- id = 187109
 
 Sender Account 
-- bsb = 101383
-- account number = 101702585
-- funds = $4,469.13
+- bsb = 108927
+- account number = 102280672
+- funds = $7382.92
 
 Receiver Account 
-- bsb = 100379
-- account number = 102431133
-- funds = $4,491.16
-- entity id = 112193
+- bsb = 147389
+- account number = 103421008
+- funds = $5,775.14
+- entity id = 141732
 
 Merchant tag 
-- id = 4111
-- suspicious lower = $0.5
-- unusual lower = $2.00
-- unusual upper = $30.00
-- suspicious upper = $150.00
+- id = 5814
+- suspicious lower = 147389
+- unusual lower = $5.00
+- unusual upper = $40.00
+- suspicious upper = $200.00
 
 Existing transaction from sender to receiver 
-- amount = 10 
-- transaction_time = 2026-06-01 00:00:00 (after session start but hasn't ended yet)
-- sender lattitude = 0
-- sender longitude = 0
-- merchant tag -> points to one above 
-- device id -> one in session above
+- amount = 8.04
+- transaction_time = 2023-01-01 00:05:00+00 (after session start but hasn't ended yet)
+- sender lattitude = 24.443799
+- sender longitude = -138.757596
+- merchant tag -> points to one above  5814
+- device id -> one in session above 8e296a067a37563370ded05f5a3bf3ec      
 
 New transaction from sender to receiver 
 - amount = 20
-- transaction_time = 2026-06-03 00:00:00+00 (2 days after last transaction - shuold be included in weekly total but not daily)
-- sender lattitude = 1.0
-- sender longitude = 1.0
-- merchant tag -> points to one above 
-- device id -> one in session above
+- transaction_time = 2023-03-01 00:00:00+00 (2 days after last transaction - shuold be included in weekly total but not daily)
+- sender lattitude = 24
+- sender longitude = -138
+- merchant tag -> points to one above 5814
+- device id -> one in session above 8e296a067a37563370ded05f5a3bf3ec
