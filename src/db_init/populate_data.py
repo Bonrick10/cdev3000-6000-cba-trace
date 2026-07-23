@@ -16,27 +16,38 @@ def generate_seed_data():
     Populates the database with synthetic data.
     """
     db = NeonDB()
-    db.run_sql_file(SQL_DIR / "clear_tables.sql")
-    db.run_sql_file(SQL_DIR / "synthetic_population.sql")
+    db.execute(db.read_sql_file(SQL_DIR / "clear_tables.sql"))
+    db.execute(db.read_sql_file(SQL_DIR / "synthetic_population.sql"))
 
 def gen_all_txns():
     db = NeonDB()
-    db.run_sql_file(UTILS_DIR / "sql" / "timeline.sql")
+    db.execute(db.read_sql_file(UTILS_DIR / "sql" / "timeline.sql"))
     
     timeline = db.query("SELECT txn_time FROM synthetic_timeline ORDER BY txn_time;")
     accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
     merchants = db.query("SELECT * FROM accounts WHERE is_merchant = TRUE;")
-    devices = db.query("SELECT * FROM devices;")
+    merchant_tags = db.query("""
+        SELECT
+            merchant_tags.id,
+            merchant_tags.merchant_category,
+            merchant_tags.suspicious_threshold_lower::numeric AS suspicious_threshold_lower,
+            merchant_tags.usual_threshold_lower::numeric AS usual_threshold_lower,
+            merchant_tags.usual_threshold_upper::numeric AS usual_threshold_upper,
+            merchant_tags.suspicious_threshold_upper::numeric AS suspicious_threshold_upper
+        FROM merchant_tags
+    """)
+    devices = db.query("SELECT DISTINCT device_id FROM device_sessions;")
 
     for timestamp in timeline:
         seed_account = random.choice(accounts)
+        # 💀 Bro this is so cursed querying every single time - maybe change to keep state using dict from account to list of transactions
         seed_acc_txns = db.query(
             """
             SELECT * FROM transactions WHERE sender_bsb = %(bsb)s AND sender_account_number = %(acc)s ORDER BY transaction_time DESC;
             """,
-            {"bsb": seed_account.bsb, "acc": seed_account.account_number}
+            {"bsb": seed_account["bsb"], "acc": seed_account["account_number"]}
         )
-        gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+        gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
 
 
 def maybe_gen_correction(transaction, db):

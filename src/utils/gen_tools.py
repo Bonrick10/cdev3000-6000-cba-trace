@@ -19,20 +19,21 @@ from utils.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools
 THRESHOLD_LOW_TXNS = 5
 THRESHOLD_YOUNG_ACC = timedelta(days=15)
 
-def gen_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
     Generate a transaction based on the seed account and its history.
     """
     r = random.random()
 
-    if r < 0.004:
-        gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
-    elif r < 0.010:
-        gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
-    else:
-        gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+    # if r < 0.004:
+    #     insert_txn(gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp), db)
+    # elif r < 0.010:
+    #     insert_txn(gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp), db)
+    # else:
+    #     insert_txn(gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp), db)
+    insert_txn(gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp), db)
 
-def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp):
     """
     Generate a realistic legitimate transaction.
     Behaviour:
@@ -46,12 +47,13 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, tim
 
     first_txn_time = seed_acc_txns[-1]["transaction_time"] if len(seed_acc_txns) > 0 else timestamp["txn_time"]
     age = timestamp["txn_time"] - first_txn_time
-    if len(seed_acc_txns) > THRESHOLD_LOW_TXNS or age > THRESHOLD_YOUNG_ACC:
+    if len(seed_acc_txns) < THRESHOLD_LOW_TXNS or age < THRESHOLD_YOUNG_ACC:
         r = random.random()
         if r < 0.80:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_any_merchant_receiver(
                 seed_account=seed_account,
-                merchants=merchants
+                merchants=merchants,
+                merchant_tags=merchant_tags
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(
@@ -60,7 +62,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, tim
             )
             merchant_tag = None
     
-        lat, lon = loc_tools.gen_rand_loc(seed_account)
+        lat, lon = loc_tools.gen_rand_loc()
         device_id = device_tools.choose_any_device(seed_account, devices)
 
     else:
@@ -69,7 +71,8 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, tim
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
                 seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
-                merchants=merchants
+                merchants=merchants,
+                merchant_tags=merchant_tags
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
@@ -78,24 +81,37 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, tim
                 accounts=accounts
             )
             merchant_tag = None
-        lat, lon = loc_tools.gen_near_loc(seed_account, seed_acc_txns)
+        lat, lon = loc_tools.gen_near_loc(seed_account, seed_acc_txns, timestamp["txn_time"])
         device_id = device_tools.choose_known_device(seed_account, seed_acc_txns, devices)
     
-    txn = {
-        "sender_bsb": seed_account.bsb,
-        "sender_account_number": seed_account.account_number,
+    print({
+        "sender_bsb": seed_account["bsb"],
+        "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
         "transaction_time": timestamp["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
+        "label": "legitimate",
+        "merchant_tags": merchant_tag,
+        "device_id": device_id
+    })
+    return {
+        "sender_bsb": seed_account["bsb"],
+        "sender_account_number": seed_account["account_number"],
+        "receiver_bsb": receiver_bsb,
+        "receiver_account_number": receiver_acc,
+        "amount": amount,
+        "transaction_time": timestamp["txn_time"],
+        "sender_latitude": lat,
+        "sender_longitude": lon,
+        "label": "legitimate",
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
-    insert_txn(txn, db)
 
-def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp):
     """
     Generate a mildly abnormal transaction.
     Behaviour:
@@ -109,11 +125,11 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, t
     # 50% chance of new payee
     if random.random() < 0.5:
         receiver = random.choice(accounts)
-        receiver_bsb, receiver_acc = receiver.bsb, receiver.account_number
+        receiver_bsb, receiver_acc = receiver["bsb"], receiver["account_number"]
         
-        merchant_data = get_merchant_data(receiver.merchant_tag)
-        if receiver.is_merchant:
-            merchant_tag = receiver.merchant_tag
+        if receiver["is_merchant"]:
+            merchant_tag = receiver["merchant_tag"]
+            merchant_data = get_merchant_data(merchant_tag)
             _, _, sus_min_amt, min_amt, max_amt, sus_max_amt = merchant_data
             amount = round(random.uniform(min_amt, max_amt), 2)
         else:
@@ -125,7 +141,8 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, t
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
                 seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
-                merchants=merchants
+                merchants=merchants,
+                merchant_tags=merchant_tags
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
@@ -135,11 +152,8 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, t
             )
             merchant_tag = None
 
-    # 30% chance of unusual location
-    if random.random() < 0.3:
-        lat, lon = loc_tools.gen_unusual_loc(seed_account)
-    else:
-        lat, lon = loc_tools.gen_normal_loc(seed_account)
+    # Near loc since violating will make this transaction suspicious
+    lat, lon = loc_tools.gen_near_loc(seed_account)
 
     # 20% chance of unseen device
     if random.random() < 0.2:
@@ -148,8 +162,8 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, t
         device_id = choose_device_from_seed(seed_account, devices)
 
     return {
-        "sender_bsb": seed_account.bsb,
-        "sender_account_number": seed_account.account_number,
+        "sender_bsb": seed_account["bsb"],
+        "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
@@ -160,7 +174,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, t
         "device_id": device_id
     }
 
-def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp):
     """
     Generate a rule-breaking suspicious transaction.
     Behaviour:
@@ -176,7 +190,8 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, times
         receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
             seed_account=seed_account,
             seed_acc_txns=seed_acc_txns,
-            merchants=merchants
+            merchants=merchants,
+            merchant_tags=merchant_tags
         )
     else:
         receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
@@ -194,7 +209,7 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, times
 
     # force new payee
     receiver = random.choice(accounts)
-    receiver_bsb, receiver_acc = receiver.bsb, receiver.account_number
+    receiver_bsb, receiver_acc = receiver["bsb"], receiver["account_number"]
 
     # impossible travel: far outside normal cluster
     lat = seed_account.home_location[0] + random.uniform(5.0, 25.0)
@@ -211,8 +226,8 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, times
     device_id = generate_random_device_id()
 
     return {
-        "sender_bsb": seed_account.bsb,
-        "sender_account_number": seed_account.account_number,
+        "sender_bsb": seed_account["bsb"],
+        "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
@@ -472,6 +487,7 @@ def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
             transaction_time,
             sender_latitude,
             sender_longitude,
+            label,
             merchant_tags,
             device_id
         ) VALUES (
@@ -483,6 +499,7 @@ def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
             %(transaction_time)s,
             %(sender_latitude)s,
             %(sender_longitude)s,
+            %(label)s,
             %(merchant_tags)s,
             %(device_id)s
         );
