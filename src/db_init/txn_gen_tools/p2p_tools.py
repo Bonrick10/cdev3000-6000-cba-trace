@@ -7,7 +7,7 @@ def choose_any_p2p_receiver(seed_account, accounts):
 
 def choose_known_p2p_receiver(seed_account, seed_acc_txns, accounts):
     past_p2p_txns = [
-        t for t in seed_acc_txns
+        transaction for transaction in seed_acc_txns
         if transaction["merchant_tags"] is None
     ]
 
