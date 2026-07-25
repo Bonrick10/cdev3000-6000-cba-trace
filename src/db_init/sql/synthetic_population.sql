@@ -72,10 +72,6 @@ VALUES
 (7372, 'Digital Services',          1.00,      5.00,      200.00,     1000.00),
 (6051, 'Cryptocurrency Exchange',  10.00,     50.00,     5000.00,    10000.00);
 
-
-base_time := '2023-01-01 00:00:00'::timestamp;
-end_time := '2026-06-30 23:59:59'::timestamp;
-
 INSERT INTO device_sessions (id, entity_id, device_id, session_start_time, session_end_time)
 SELECT
     (g * 7919) % 90000 + 100000 AS id,
@@ -95,22 +91,11 @@ CROSS JOIN LATERAL (
 ) e
 CROSS JOIN LATERAL (
     SELECT
-        base_time
-        + (random() * extract(epoch FROM (end_time - base_time))) 
+        '2023-01-01 00:00:00'::timestamp
+        + (random() * extract(epoch FROM ('2026-06-30 23:59:59'::timestamp - '2023-01-01 00:00:00'::timestamp))) 
         * interval '1 second'
         AS session_start_time
 ) s;
-
-
-INSERT INTO accounts (bsb, account_number, entity_id, funds, is_merchant, merchant_tag)
-SELECT
-                    - '2023-01-01 00:00:00'::timestamp
-                )
-            )
-        ) * interval '1 second'
-        AS session_start_time
-) s;
-
 
 INSERT INTO accounts (bsb, account_number, entity_id, funds, is_merchant, merchant_tag)
 SELECT
