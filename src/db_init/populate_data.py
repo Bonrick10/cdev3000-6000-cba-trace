@@ -16,7 +16,9 @@ def generate_seed_data():
     Populates the database with synthetic data.
     """
     db = NeonDB()
+    print("Resetting database")
     db.execute(db.read_sql_file(SQL_DIR / "clear_tables.sql"))
+    print("Generating data")
     db.execute(db.read_sql_file(SQL_DIR / "synthetic_population.sql"))
 
 def gen_all_txns():
@@ -48,11 +50,12 @@ def gen_all_txns():
 
     timeline = gen_tools.gen_timeline(BASE_TIME, END_TIME)
 
+    print("Generating Transaction Data")
     for index, new_txn_time in enumerate(timeline):
         seed_account = random.choice(accounts)
         seed_acc_txns = account_txns[(seed_account["bsb"], seed_account["account_number"])]
 
-        print(f"\rGenerating Transaction {index} of {len(timeline)}", end="")
+        print(f"\rGenerating Transaction {index} of {len(timeline)}")
         new_txn = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
         account_txns[(seed_account["bsb"], seed_account["account_number"])].append(new_txn)
         insert_txn(new_txn, db) 
