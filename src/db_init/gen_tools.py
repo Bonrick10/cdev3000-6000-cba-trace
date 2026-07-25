@@ -37,11 +37,11 @@ def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, dev
     r = random.random()
 
     if r < 0.004:
-        gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+        return gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
     elif r < 0.010:
-        gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+        return gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
     else:
-        gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
+        return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
 
 def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
@@ -92,9 +92,9 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         lat, lon = loc_tools.gen_near_loc(seed_account, seed_acc_txns)
         device_id = device_tools.choose_known_device(seed_account, seed_acc_txns, devices)
     
-    txn = {
-        "sender_bsb": seed_account.bsb,
-        "sender_account_number": seed_account.account_number,
+    return {
+        "sender_bsb": seed_account["bsb"],
+        "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
@@ -105,7 +105,6 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
-    insert_txn(txn, db)
 
 def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
@@ -329,7 +328,6 @@ def generate_timestamp() -> datetime:
 
     return date.replace(hour=hour, minute=minute, second=second)
 
-
 # ---------------------------------------------------------------------------
 # Receiver selection
 # ---------------------------------------------------------------------------
@@ -463,45 +461,3 @@ def generate_random_device_id() -> str:
         A device ID string.
     """
     return secrets.token_hex(32)
-
-# ----------------------------------------------------------------------------
-# Transaction Insertion
-# ----------------------------------------------------------------------------
-def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
-    """
-    Insert a transaction into the database.
-
-    Args:
-        txn: Dictionary containing transaction details.
-        db: NeonDB instance for database operations.
-    """
-    db.execute(
-        """
-        INSERT INTO transactions (
-            sender_bsb,
-            sender_account_number,
-            receiver_bsb,
-            receiver_account_number,
-            amount,
-            transaction_time,
-            sender_latitude,
-            sender_longitude,
-            label,
-            merchant_tags,
-            device_id
-        ) VALUES (
-            %(sender_bsb)s,
-            %(sender_account_number)s,
-            %(receiver_bsb)s,
-            %(receiver_account_number)s,
-            %(amount)s,
-            %(transaction_time)s,
-            %(sender_latitude)s,
-            %(sender_longitude)s,
-            %(label)s,
-            %(merchant_tags)s,
-            %(device_id)s
-        );
-        """,
-        txn
-    )

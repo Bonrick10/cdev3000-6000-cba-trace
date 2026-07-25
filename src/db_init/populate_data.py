@@ -22,9 +22,10 @@ def generate_seed_data():
 def gen_all_txns():
     db = NeonDB()
     
+    # Array of account dicts
     accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
+    # Array of account dicts
     merchants = db.query("SELECT * FROM accounts WHERE is_merchant = TRUE;")
-    devices = db.query("SELECT DISTINCT device_id FROM device_sessions;")
     merchant_tags = db.query("""
         SELECT
             merchant_tags.id,
@@ -35,45 +36,87 @@ def gen_all_txns():
             merchant_tags.suspicious_threshold_upper::numeric AS suspicious_threshold_upper
         FROM merchant_tags
     """)
+    # Array of device_ids
+    devices = db.query("SELECT DISTINCT device_id FROM device_sessions;")
+    # RIP Memory usage 
+    # Key is tuple of (bsb, account_number) value is arr of transaction dicts
+    # (should be ascending time ordered since insert in order of timeline)
+    account_txns = {(account["bsb"], account["account_number"]): [] for account in accounts}
 
     for timestamp in gen_tools.gen_timeline(BASE_TIME, END_TIME):
         seed_account = random.choice(accounts)
-        seed_acc_txns = db.query(
-            """
-            SELECT * FROM transactions WHERE sender_bsb = %(bsb)s AND sender_account_number = %(acc)s ORDER BY transaction_time DESC;
-            """,
-            {"bsb": seed_account["bsb"], "acc": seed_account["account_number"]}
-        )
-        gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
+        seed_acc_txns = account_txns[(seed_account["bsb"], seed_account["account_number"])]
+        
+        new_txn = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
+        account_txns[(seed_account["bsb"], seed_account["account_number"])].append(new_txn)
+        insert_txn(new_txn, db) 
 
+# def maybe_gen_correction(transaction, db):
+#     # 0.1% chance of correction
+#     if random.random() > 0.001:
+#         return None
 
-def maybe_gen_correction(transaction, db):
-    # 0.1% chance of correction
-    if random.random() > 0.001:
-        return None
+#     old_label = transaction["label"]
 
-    old_label = transaction["label"]
-
-    if old_label == "legitimate" or old_label == "unusual" or old_label == "suspicious":
-        new_label = random.choice(["confirmed_legitimate", "confirmed_fraud"])
+#     if old_label == "legitimate" or old_label == "unusual" or old_label == "suspicious":
+#         new_label = random.choice(["confirmed_legitimate", "confirmed_fraud"])
 
     
-    # Correction timing
-    day_delta = timedelta(days=random.randint(3, 60))
-    hour_delta = timedelta(hours=random.randint(0, 23))
-    minute_delta = timedelta(minutes=random.randint(0, 59))
-    delta = day_delta + hour_delta + minute_delta
+#     # Correction timing
+#     day_delta = timedelta(days=random.randint(3, 60))
+#     hour_delta = timedelta(hours=random.randint(0, 23))
+#     minute_delta = timedelta(minutes=random.randint(0, 59))
+#     delta = day_delta + hour_delta + minute_delta
 
-    correction_time = transaction["transaction_time"] + delta
+#     correction_time = transaction["transaction_time"] + delta
 
-    correction = {
-        "transaction_id": transaction["id"],
-        "old_label": old_label,
-        "new_label": new_label,
-        "correction_time": correction_time
-    }
+#     correction = {
+#         "transaction_id": transaction["id"],
+#         "old_label": old_label,
+#         "new_label": new_label,
+#         "correction_time": correction_time
+#     }
+#     db.execute(
+#         """
+#         INSERT INTO corrections (transaction_id, old_label, new_label, correction_time) 
+#         VALUES (%(transaction_id)s, %(old_label)s, %(new_label)s, %(correction_time)s)
+#         """, correction)
+
+def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
+    """
+    Insert a transaction into the database.
+
+    Args:
+        txn: Dictionary containing transaction details.
+        db: NeonDB instance for database operations.
+    """
     db.execute(
         """
-        INSERT INTO corrections (transaction_id, old_label, new_label, correction_time) 
-        VALUES (%(transaction_id)s, %(old_label)s, %(new_label)s, %(correction_time)s)
-        """, correction)
+        INSERT INTO transactions (
+            sender_bsb,
+            sender_account_number,
+            receiver_bsb,
+            receiver_account_number,
+            amount,
+            transaction_time,
+            sender_latitude,
+            sender_longitude,
+            label,
+            merchant_tags,
+            device_id
+        ) VALUES (
+            %(sender_bsb)s,
+            %(sender_account_number)s,
+            %(receiver_bsb)s,
+            %(receiver_account_number)s,
+            %(amount)s,
+            %(transaction_time)s,
+            %(sender_latitude)s,
+            %(sender_longitude)s,
+            %(label)s,
+            %(merchant_tags)s,
+            %(device_id)s
+        );
+        """,
+        txn
+    )
