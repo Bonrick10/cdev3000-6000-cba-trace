@@ -1,14 +1,15 @@
 """ Data Population Module """
 from pathlib import Path
 import random
-from datetime import datetime, timedelta
-from utils.db import NeonDB
-import db_init.gen_tools as gen_tools
+from datetime import datetime, timedelta, timezone
+from src.utils.db import NeonDB
+import src.db_init.gen_tools as gen_tools
 
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
 SRC_DIR = BASE_DIR.parent
-UTILS_DIR = SRC_DIR / "utils"
+BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc) # 2023-01-01 00:00:00+00
+END_TIME = datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc) # 2026-06-30 23:59:59+00
 
 def generate_seed_data():
     """
@@ -20,12 +21,10 @@ def generate_seed_data():
 
 def gen_all_txns():
     db = NeonDB()
-    db.execute(db.read_sql_file(UTILS_DIR / "sql" / "timeline.sql"))
     
-    timeline = db.query("SELECT txn_time FROM synthetic_timeline ORDER BY txn_time;")
     accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
     merchants = db.query("SELECT * FROM accounts WHERE is_merchant = TRUE;")
-    devices = db.query("SELECT * FROM devices;")
+    devices = db.query("SELECT DISTINCT device_id FROM device_sessions;")
     merchant_tags = db.query("""
         SELECT
             merchant_tags.id,
@@ -36,9 +35,8 @@ def gen_all_txns():
             merchant_tags.suspicious_threshold_upper::numeric AS suspicious_threshold_upper
         FROM merchant_tags
     """)
-    devices = db.query("SELECT DISTINCT device_id FROM device_sessions;")
 
-    for timestamp in timeline:
+    for timestamp in gen_tools.gen_timeline(BASE_TIME, END_TIME):
         seed_account = random.choice(accounts)
         seed_acc_txns = db.query(
             """

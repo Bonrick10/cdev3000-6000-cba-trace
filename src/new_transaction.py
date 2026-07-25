@@ -8,7 +8,7 @@
 """
 import json
 from label import Label
-from rules.rules import check_rules
+from src.rules.rules import check_rules
 
 MODEL_UNUSUAL_THRESHOLD = 0.7
 MODEL_SUSPICIOUS_THRESHOLD = 0.9

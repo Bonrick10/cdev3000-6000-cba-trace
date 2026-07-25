@@ -3,7 +3,7 @@ import collections
 from pathlib import Path
 import datetime
 from geopy.distance import geodesic
-from utils.db import NeonDB
+from src.utils.db import NeonDB
 from label import Label
 
 BASE_DIR = Path(__file__).resolve().parent

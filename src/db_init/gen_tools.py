@@ -11,13 +11,24 @@ probabilistic in output, suitable for synthetic data pipelines.
 
 import random
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Tuple, List, Any
-from utils.db import NeonDB
-from db_init.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools 
+from src.utils.db import NeonDB
+from src.db_init.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools 
 
 THRESHOLD_LOW_TXNS = 5
 THRESHOLD_YOUNG_ACC = timedelta(days=15)
+
+def gen_timeline(base_time, end_time): 
+    step = timedelta(minutes=5)
+
+    total_seconds = (end_time - base_time).total_seconds()
+    num_steps = int(total_seconds // step.total_seconds())
+
+    # Just every 5 min for now, could add randomisation later
+    txn_times = [base_time + g * step for g in range(num_steps + 1)] 
+    return txn_times
+
 
 def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
