@@ -14,7 +14,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Tuple, List, Any
 from utils.db import NeonDB
-from utils.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools 
+from db_init.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools 
 
 THRESHOLD_LOW_TXNS = 5
 THRESHOLD_YOUNG_ACC = timedelta(days=15)
