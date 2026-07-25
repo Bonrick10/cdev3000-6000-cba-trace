@@ -19,7 +19,7 @@ from utils.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools
 THRESHOLD_LOW_TXNS = 5
 THRESHOLD_YOUNG_ACC = timedelta(days=15)
 
-def gen_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
     Generate a transaction based on the seed account and its history.
     """
@@ -32,7 +32,7 @@ def gen_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp
     else:
         gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db)
 
-def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
     Generate a realistic legitimate transaction.
     Behaviour:
@@ -46,7 +46,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, tim
 
     first_txn_time = seed_acc_txns[-1]["transaction_time"] if len(seed_acc_txns) > 0 else timestamp["txn_time"]
     age = timestamp["txn_time"] - first_txn_time
-    if len(seed_acc_txns) > THRESHOLD_LOW_TXNS or age > THRESHOLD_YOUNG_ACC:
+    if len(seed_acc_txns) < THRESHOLD_LOW_TXNS or age < THRESHOLD_YOUNG_ACC:
         r = random.random()
         if r < 0.80:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_any_merchant_receiver(
@@ -90,12 +90,13 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, devices, tim
         "transaction_time": timestamp["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
+        "label": "legitimate",
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
     insert_txn(txn, db)
 
-def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
     Generate a mildly abnormal transaction.
     Behaviour:
@@ -112,8 +113,8 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, t
         receiver_bsb, receiver_acc = receiver.bsb, receiver.account_number
         
         merchant_data = get_merchant_data(receiver.merchant_tag)
-        if receiver.is_merchant:
-            merchant_tag = receiver.merchant_tag
+        if receiver["is_merchant"]:
+            merchant_tag = receiver["merchant_tag"]
             _, _, sus_min_amt, min_amt, max_amt, sus_max_amt = merchant_data
             amount = round(random.uniform(min_amt, max_amt), 2)
         else:
@@ -148,19 +149,20 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, devices, t
         device_id = choose_device_from_seed(seed_account, devices)
 
     return {
-        "sender_bsb": seed_account.bsb,
-        "sender_account_number": seed_account.account_number,
+       "sender_bsb": seed_account["bsb"],
+        "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
         "transaction_time": timestamp["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
+        "label": "suspicious",
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
 
-def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, timestamp, db):
+def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
     """
     Generate a rule-breaking suspicious transaction.
     Behaviour:
@@ -194,7 +196,7 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, times
 
     # force new payee
     receiver = random.choice(accounts)
-    receiver_bsb, receiver_acc = receiver.bsb, receiver.account_number
+    receiver_bsb, receiver_acc = receiver["bsb"], receiver["account_number"]
 
     # impossible travel: far outside normal cluster
     lat = seed_account.home_location[0] + random.uniform(5.0, 25.0)
@@ -211,14 +213,15 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, devices, times
     device_id = generate_random_device_id()
 
     return {
-        "sender_bsb": seed_account.bsb,
-        "sender_account_number": seed_account.account_number,
+        "sender_bsb": seed_account["bsb"],
+        "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
         "transaction_time": timestamp,
         "sender_latitude": lat,
         "sender_longitude": lon,
+        "label": "suspicious",
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
@@ -472,6 +475,7 @@ def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
             transaction_time,
             sender_latitude,
             sender_longitude,
+            label,
             merchant_tags,
             device_id
         ) VALUES (
@@ -483,6 +487,7 @@ def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
             %(transaction_time)s,
             %(sender_latitude)s,
             %(sender_longitude)s,
+            %(label)s,
             %(merchant_tags)s,
             %(device_id)s
         );
