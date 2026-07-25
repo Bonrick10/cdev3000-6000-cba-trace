@@ -32,21 +32,21 @@ def gen_timeline(base_time, end_time):
     txn_times = [base_time + g * step for g in range(num_steps + 1)] 
     return txn_times
 
-def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
+def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
     Generate a transaction based on the seed account and its history.
     """
     r = random.random()
 
-    return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+    return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
     # if r < SUSPICIOUS_TXN_RATE:
-    #     return gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+    #     return gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
     # elif r < SUSPICIOUS_TXN_RATE + UNUSUAL_TXN_RATE:
-    #     return gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+    #     return gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
     # else:
-    #     return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+    #     return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
 
-def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
+def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
     Generate a realistic legitimate transaction.
     Behaviour:
@@ -65,34 +65,36 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         r = random.random()
         if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_any_merchant_receiver(
-                merchants=merchants
+                merchants=merchants,
+                merchant_tags=merchant_tags
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(
                 seed_account=seed_account,
-                accounts=remove_sender_from_list(seed_account, accounts)
+                accounts=remove_sender_from_account_list(seed_account, accounts)
             )
             merchant_tag = None
     
-        lat, lon = loc_tools.gen_rand_loc(seed_account)
-        device_id = device_tools.choose_any_device(seed_account, devices)
+        lat, lon = loc_tools.gen_rand_loc()
+        device_id = device_tools.choose_any_device(device_sessions)
     else:
         # Established account - do known receiver for legit
         r = random.random()
         if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
                 seed_acc_txns=seed_acc_txns,
-                merchants=merchants
+                merchants=merchants,
+                merchant_tags=merchant_tags
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
                 seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
-                accounts=remove_sender_from_list(seed_account, accounts)
+                accounts=remove_sender_from_account_list(seed_account, accounts)
             )
             merchant_tag = None
-        lat, lon = loc_tools.gen_near_loc(seed_account, seed_acc_txns)
-        device_id = device_tools.choose_known_device(seed_account, seed_acc_txns, devices)
+        lat, lon = loc_tools.gen_near_loc(seed_acc_txns)
+        device_id = device_tools.choose_known_device(seed_acc_txns, device_sessions)
     
     return {
         "sender_bsb": seed_account["bsb"],
@@ -100,7 +102,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
-        "transaction_time": new_txn_time["txn_time"],
+        "transaction_time": new_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
         "label": "legitimate",
@@ -108,7 +110,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         "device_id": device_id
     }
 
-def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
+def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
     Generate a mildly abnormal transaction.
     Behaviour:
@@ -157,7 +159,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
     if random.random() < 0.2:
         device_id = generate_random_device_id()
     else:
-        device_id = choose_device_from_seed(seed_account, devices)
+        device_id = choose_device_from_seed(seed_account, device_sessions)
 
     return {
        "sender_bsb": seed_account["bsb"],
@@ -173,7 +175,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
         "device_id": device_id
     }
 
-def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
+def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
     Generate a rule-breaking suspicious transaction.
     Behaviour:
@@ -237,8 +239,8 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
         "device_id": device_id
     }
 
-def remove_sender_from_list(sender_acc, list): 
-    return filter(lambda acc: acc["bsb"] != sender_acc["bsb"] or acc["account_number"] != sender_acc["account_number"], list)
+def remove_sender_from_account_list(sender_acc, account_list): 
+    return list(filter(lambda acc: (acc["bsb"] != sender_acc["bsb"]) or (acc["account_number"] != sender_acc["account_number"]), account_list))
 
 # def generate_new_txn_time() -> datetime:
 #     """
@@ -266,64 +268,3 @@ def remove_sender_from_list(sender_acc, list):
 
 #     return date.replace(hour=hour, minute=minute, second=second)
 
-# ---------------------------------------------------------------------------
-# Location generation
-# ---------------------------------------------------------------------------
-
-def generate_location(seed_account: Any) -> Tuple[float, float]:
-    """
-    Generate a realistic location for a transaction.
-
-    Args:
-        seed_account: Account object containing home/work locations.
-
-    Returns:
-        Tuple of (latitude, longitude).
-    """
-    r = random.random()
-    home_lat, home_lon = seed_account.home_location
-    work_lat, work_lon = seed_account.work_location
-
-    if r < 0.70:
-        return (
-            home_lat + random.uniform(-0.01, 0.01),
-            home_lon + random.uniform(-0.01, 0.01),
-        )
-
-    if r < 0.95:
-        return (
-            work_lat + random.uniform(-0.02, 0.02),
-            work_lon + random.uniform(-0.02, 0.02),
-        )
-
-    return (
-        home_lat + random.uniform(-0.5, 0.5),
-        home_lon + random.uniform(-0.5, 0.5),
-    )
-
-# ---------------------------------------------------------------------------
-# Device selection
-# ---------------------------------------------------------------------------
-
-def choose_device(seed_account: Any, devices: List[Any]) -> str:
-    """
-    Select a device ID for a transaction.
-
-    Args:
-        seed_account: Account object containing device IDs.
-
-    Returns:
-        A device ID string.
-    """
-    r = random.random()
-
-    # TODO: Implement logic to select a device based on known devices and probabilities.
-    # For now, we will randomly select a device from the provided list.
-    # 90% chance of using a previous device, 8% chance of using a new device, 2% chance of using a random device
-    if r < 0.90:
-        return random.choice(devices).device_id
-
-    if r < 0.98:
-        return random.choice(devices).device_id
-
-    return random.choice(devices).device_id

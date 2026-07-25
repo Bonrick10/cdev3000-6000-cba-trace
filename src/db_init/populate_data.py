@@ -41,16 +41,19 @@ def gen_all_txns():
         """)
     }
     # Array of device_ids
-    devices = db.query("SELECT DISTINCT device_id FROM device_sessions;")
+    device_sessions = db.query("SELECT * FROM device_sessions;")
     # Key is tuple of (bsb, account_number) value is arr of transaction dicts
     # (should be ascending time ordered since insert in order of timeline)
     account_txns = {(account["bsb"], account["account_number"]): [] for account in accounts}
 
-    for new_txn_time in gen_tools.gen_timeline(BASE_TIME, END_TIME):
+    timeline = gen_tools.gen_timeline(BASE_TIME, END_TIME)
+
+    for index, new_txn_time in enumerate(timeline):
         seed_account = random.choice(accounts)
         seed_acc_txns = account_txns[(seed_account["bsb"], seed_account["account_number"])]
 
-        new_txn = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+        print(f"\rGenerating Transaction {index} of {len(timeline)}", end="")
+        new_txn = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
         account_txns[(seed_account["bsb"], seed_account["account_number"])].append(new_txn)
         insert_txn(new_txn, db) 
 
