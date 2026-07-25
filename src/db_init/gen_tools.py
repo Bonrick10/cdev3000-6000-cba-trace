@@ -65,13 +65,12 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         r = random.random()
         if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_any_merchant_receiver(
-                seed_account=seed_account,
                 merchants=merchants
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(
                 seed_account=seed_account,
-                accounts=accounts
+                accounts=remove_sender_from_list(seed_account, accounts)
             )
             merchant_tag = None
     
@@ -82,7 +81,6 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         r = random.random()
         if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
-                seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
                 merchants=merchants
         )
@@ -90,7 +88,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
                 seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
-                accounts=accounts
+                accounts=remove_sender_from_list(seed_account, accounts)
             )
             merchant_tag = None
         lat, lon = loc_tools.gen_near_loc(seed_account, seed_acc_txns)
@@ -239,158 +237,34 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
         "device_id": device_id
     }
 
-def get_merchant_data(merchant_tag):
-    """
-    Fetch merchant amount limits from the database.
-    """
-    db = NeonDB()
-    merchant_data = db.query(
-        """
-        SELECT 
-            suspicious_threshold_lower, 
-            usual_threshold_lower, 
-            usual_threshold_upper, 
-            suspicious_threshold_upper 
-        FROM merchant_tags WHERE merchant_tag = %s LIMIT 1;
-        """, (merchant_tag))
-    return merchant_data
+def remove_sender_from_list(sender_acc, list): 
+    return filter(lambda acc: acc["bsb"] != sender_acc["bsb"] or acc["account_number"] != sender_acc["account_number"], list)
 
-# ---------------------------------------------------------------------------
-# Merchant tag selection
-# ---------------------------------------------------------------------------
+# def generate_new_txn_time() -> datetime:
+#     """
+#     Generate a realistic new_txn_time for a transaction.
 
-def choose_merchant_tag(merchant_tags: List[str]) -> str:
-    """
-    Select a merchant tag with weighted probability.
+#     Returns:
+#         A datetime object representing the transaction time.
+#     """
+#     weekday_bias = random.random() < 0.8
+#     day_offset = random.randint(0, 4) if weekday_bias else random.randint(5, 6)
 
-    Args:
-        merchant_tags: List of merchant tag names.
+#     base_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+#     date = base_date + timedelta(days=day_offset)
 
-    Returns:
-        A single merchant tag name.
-    """
-    weights = [0.4, 0.2, 0.2, 0.1, 0.1]
-    return random.choices(merchant_tags, weights=weights, k=1)[0]
+#     r2 = random.random()
+#     if r2 < 0.80:
+#         hour = random.randint(7, 21)
+#     elif r2 < 0.95:
+#         hour = random.randint(5, 6)
+#     else:
+#         hour = random.randint(22, 23)
 
+#     minute = random.randint(0, 59)
+#     second = random.randint(0, 59)
 
-# ---------------------------------------------------------------------------
-# Amount generation tied to merchant tag
-# ---------------------------------------------------------------------------
-
-def generate_amount_for_tag(tag_name: str) -> float:
-    """
-    Generate a realistic transaction amount based on merchant category.
-
-    Args:
-        tag_name: Merchant category name.
-
-    Returns:
-        A float representing the transaction amount.
-    """
-    profile = MERCHANT_AMOUNT_PROFILES.get(tag_name)
-
-    if profile is None:
-        return round(random.uniform(10, 300), 2)
-
-    min_amt, max_amt, small_bias = profile
-    midpoint = (min_amt + max_amt) / 2
-
-    if random.random() < small_bias:
-        return round(random.uniform(min_amt, midpoint), 2)
-
-    return round(random.uniform(midpoint, max_amt), 2)
-
-
-# ---------------------------------------------------------------------------
-# new_txn_time generation
-# ---------------------------------------------------------------------------
-
-def generate_new_txn_time() -> datetime:
-    """
-    Generate a realistic new_txn_time for a transaction.
-
-    Returns:
-        A datetime object representing the transaction time.
-    """
-    weekday_bias = random.random() < 0.8
-    day_offset = random.randint(0, 4) if weekday_bias else random.randint(5, 6)
-
-    base_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    date = base_date + timedelta(days=day_offset)
-
-    r2 = random.random()
-    if r2 < 0.80:
-        hour = random.randint(7, 21)
-    elif r2 < 0.95:
-        hour = random.randint(5, 6)
-    else:
-        hour = random.randint(22, 23)
-
-    minute = random.randint(0, 59)
-    second = random.randint(0, 59)
-
-    return date.replace(hour=hour, minute=minute, second=second)
-
-# ---------------------------------------------------------------------------
-# Receiver selection
-# ---------------------------------------------------------------------------
-
-def choose_receiver(seed_account: Any,
-                    accounts: List[Any],
-                    merchants: List[Any]) -> Tuple[int, int]:
-    """
-    Select a receiver for a transaction.
-
-    Args:
-        seed_account: The sender account object.
-        accounts: List of all accounts.
-        merchants: List of merchant account objects.
-
-    Returns:
-        Tuple of (receiver_bsb, receiver_account_number).
-    """
-    r = random.random()
-
-    if r < 0.40:
-        merchant = random.choice(merchants)
-        return merchant.bsb, merchant.account_number
-
-    if r < 0.70:
-        return seed_account.bsb, random.choice(seed_account.other_accounts)
-
-    other = random.choice(accounts)
-    return other.bsb, other.account_number
-
-def get_known_payees(db, seed_account) -> set:
-    sender_bsb = seed_account.bsb
-    sender_acc = seed_account.account_number
-    
-    db = NeonDB()
-
-    rows = db.query(
-        """
-        SELECT DISTINCT receiver_bsb, receiver_account_number
-        FROM transactions
-        WHERE sender_bsb = %(bsb)s
-          AND sender_account_number = %(acc)s;
-        """,
-        {"bsb": sender_bsb, "acc": sender_acc}
-    )
-
-    return {(row["receiver_bsb"], row["receiver_account_number"]) for row in rows}
-
-def split_payees(accounts, known_payees):
-    known = []
-    new = []
-
-    for acc in accounts:
-        key = (acc.bsb, acc.account_number)
-        if key in known_payees:
-            known.append(acc)
-        else:
-            new.append(acc)
-
-    return known, new
+#     return date.replace(hour=hour, minute=minute, second=second)
 
 # ---------------------------------------------------------------------------
 # Location generation
@@ -427,7 +301,6 @@ def generate_location(seed_account: Any) -> Tuple[float, float]:
         home_lon + random.uniform(-0.5, 0.5),
     )
 
-
 # ---------------------------------------------------------------------------
 # Device selection
 # ---------------------------------------------------------------------------
@@ -454,13 +327,3 @@ def choose_device(seed_account: Any, devices: List[Any]) -> str:
         return random.choice(devices).device_id
 
     return random.choice(devices).device_id
-
-
-def generate_random_device_id() -> str:
-    """
-    Generate a random 64-character hex device ID.
-
-    Returns:
-        A device ID string.
-    """
-    return secrets.token_hex(32)

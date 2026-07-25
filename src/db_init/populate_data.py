@@ -22,11 +22,14 @@ def generate_seed_data():
 def gen_all_txns():
     db = NeonDB()
     
+    # RIP Memory usage 💀
     # Array of account dicts
     accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
     # Array of account dicts
     merchants = db.query("SELECT * FROM accounts WHERE is_merchant = TRUE;")
-    merchant_tags = db.query("""
+    # Dict mapping merchant_tags.id to merchant_tag
+    merchant_tags = { merchant_tag["id"]: merchant_tag for merchant_tag in 
+        db.query("""
         SELECT
             merchant_tags.id,
             merchant_tags.merchant_category,
@@ -35,10 +38,10 @@ def gen_all_txns():
             merchant_tags.usual_threshold_upper::numeric AS usual_threshold_upper,
             merchant_tags.suspicious_threshold_upper::numeric AS suspicious_threshold_upper
         FROM merchant_tags
-    """)
+        """)
+    }
     # Array of device_ids
     devices = db.query("SELECT DISTINCT device_id FROM device_sessions;")
-    # RIP Memory usage 
     # Key is tuple of (bsb, account_number) value is arr of transaction dicts
     # (should be ascending time ordered since insert in order of timeline)
     account_txns = {(account["bsb"], account["account_number"]): [] for account in accounts}
@@ -82,7 +85,7 @@ def gen_all_txns():
 #         VALUES (%(transaction_id)s, %(old_label)s, %(new_label)s, %(correction_time)s)
 #         """, correction)
 
-def insert_txn(txn: Dict[str, Any], db: NeonDB) -> None:
+def insert_txn(txn, db):
     """
     Insert a transaction into the database.
 
