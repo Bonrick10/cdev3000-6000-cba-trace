@@ -6,32 +6,8 @@
 - `pip install -r requirements.txt` - Use this to install necessary libraries for this project, Do this during initial setup, and also if new libraries are added
 - Copy `.env.example` into `.env` and change environment variables to appropriate values
 ### Database Setup 
-- To read in schema to remote db use `psql 'postgresql://[user]:[password]@[neon_hostname][:port]/[dbname]' -f ./schema.sql`
+- To read in schema to remote db use `psql 'postgresql://[user]:[password]@[neon_hostname][:port]/[dbname]' -f [schema_path]`
     - Only do this if neon remote db isn't already set up or to reset it.
-
-## Source Code Directory Structure
-The interface of the code is primarily called and controlled by init.py and main.py where init.py handles initialisation of the database while main handles model training and output (subject to change)
-
-src/
-├── db_init/
-│   ├── db.py
-│   ├── neon_connection.py
-│   └── sql/
-│       ├── clear_tables.sql
-│       ├── populate_tables.sql
-│       └── seed_transactions.sql
-│
-├── rules/
-│   ├──label_transactions.py
-│   └── sql/
-│       └── fraud_rules.sql
-│
-├── big_model/
-├── small_model/
-├── utils/
-│
-├── main.py
-└── init.py
 
 ## During Development
 - `pip freeze > requirements.txt` - Use when you pip install something to save the list of libraries used 
@@ -52,3 +28,16 @@ src/
 6. Transactions far exceed normal range for merchant type -> _suspicious_  
 **Emerging Fraud trend not included in ruleset**  
 7. TODO
+
+## Run Instructions 
+### Data Generation 
+- In the root directory run `python3 -m src.db_init.main` 
+### Main Pipeline 
+- New Transaction -`TODO`
+- Report Transaction -`TODO`
+### Big Model
+- Training - `TODO`
+- Testing - `TODO`
+### Small Model
+- Training - `TODO`
+- Testing - `TODO`

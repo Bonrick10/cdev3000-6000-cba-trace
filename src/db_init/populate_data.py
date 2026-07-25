@@ -43,11 +43,11 @@ def gen_all_txns():
     # (should be ascending time ordered since insert in order of timeline)
     account_txns = {(account["bsb"], account["account_number"]): [] for account in accounts}
 
-    for timestamp in gen_tools.gen_timeline(BASE_TIME, END_TIME):
+    for new_txn_time in gen_tools.gen_timeline(BASE_TIME, END_TIME):
         seed_account = random.choice(accounts)
         seed_acc_txns = account_txns[(seed_account["bsb"], seed_account["account_number"])]
-        
-        new_txn = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
+
+        new_txn = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
         account_txns[(seed_account["bsb"], seed_account["account_number"])].append(new_txn)
         insert_txn(new_txn, db) 
 

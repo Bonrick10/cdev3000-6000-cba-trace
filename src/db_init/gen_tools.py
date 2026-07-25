@@ -18,6 +18,9 @@ from src.db_init.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_to
 
 THRESHOLD_LOW_TXNS = 5
 THRESHOLD_YOUNG_ACC = timedelta(days=15)
+SUSPICIOUS_TXN_RATE = 0.004
+UNUSUAL_TXN_RATE = 0.010
+RECEIVER_MERCHANT_RATE = 0.80
 
 def gen_timeline(base_time, end_time): 
     step = timedelta(minutes=5)
@@ -29,21 +32,21 @@ def gen_timeline(base_time, end_time):
     txn_times = [base_time + g * step for g in range(num_steps + 1)] 
     return txn_times
 
-
-def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
+def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
     """
     Generate a transaction based on the seed account and its history.
     """
     r = random.random()
 
-    if r < 0.004:
-        return gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
-    elif r < 0.010:
-        return gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
-    else:
-        return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db)
+    return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+    # if r < SUSPICIOUS_TXN_RATE:
+    #     return gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+    # elif r < SUSPICIOUS_TXN_RATE + UNUSUAL_TXN_RATE:
+    #     return gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
+    # else:
+    #     return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db)
 
-def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
+def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
     """
     Generate a realistic legitimate transaction.
     Behaviour:
@@ -55,11 +58,12 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
     - known payees (?)
     """
 
-    first_txn_time = seed_acc_txns[-1]["transaction_time"] if len(seed_acc_txns) > 0 else timestamp["txn_time"]
-    age = timestamp["txn_time"] - first_txn_time
+    first_txn_time = seed_acc_txns[0]["transaction_time"] if len(seed_acc_txns) > 0 else new_txn_time
+    age = new_txn_time - first_txn_time
+    # If young account, do any receiver 
     if len(seed_acc_txns) < THRESHOLD_LOW_TXNS or age < THRESHOLD_YOUNG_ACC:
         r = random.random()
-        if r < 0.80:
+        if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_any_merchant_receiver(
                 seed_account=seed_account,
                 merchants=merchants
@@ -73,10 +77,10 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
     
         lat, lon = loc_tools.gen_rand_loc(seed_account)
         device_id = device_tools.choose_any_device(seed_account, devices)
-
     else:
+        # Established account - do known receiver for legit
         r = random.random()
-        if r < 0.80:
+        if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
                 seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
@@ -98,7 +102,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
-        "transaction_time": timestamp["txn_time"],
+        "transaction_time": new_txn_time["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
         "label": "legitimate",
@@ -106,7 +110,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         "device_id": device_id
     }
 
-def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
+def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
     """
     Generate a mildly abnormal transaction.
     Behaviour:
@@ -116,7 +120,6 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
     - unusual time-of-day (early morning or late night)
     """
 
-    
     # 50% chance of new payee
     if random.random() < 0.5:
         receiver = random.choice(accounts)
@@ -132,7 +135,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
             amount = round(random.uniform(5, 500), 2)
     else:
         r = random.random()
-        if r < 0.80:
+        if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
                 seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
@@ -164,7 +167,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
-        "transaction_time": timestamp["txn_time"],
+        "transaction_time": new_txn_time["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
         "label": "suspicious",
@@ -172,7 +175,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
         "device_id": device_id
     }
 
-def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, timestamp, db):
+def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, devices, new_txn_time, db):
     """
     Generate a rule-breaking suspicious transaction.
     Behaviour:
@@ -213,7 +216,7 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
     lon = seed_account.home_location[1] + random.uniform(5.0, 25.0)
 
     # suspicious time-of-day
-    timestamp = datetime.now().replace(
+    new_txn_time = datetime.now().replace(
         hour=random.choice([0, 1, 2, 3]),
         minute=random.randint(0, 59),
         second=random.randint(0, 59)
@@ -228,7 +231,7 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
-        "transaction_time": timestamp,
+        "transaction_time": new_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
         "label": "suspicious",
@@ -299,12 +302,12 @@ def generate_amount_for_tag(tag_name: str) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Timestamp generation
+# new_txn_time generation
 # ---------------------------------------------------------------------------
 
-def generate_timestamp() -> datetime:
+def generate_new_txn_time() -> datetime:
     """
-    Generate a realistic timestamp for a transaction.
+    Generate a realistic new_txn_time for a transaction.
 
     Returns:
         A datetime object representing the transaction time.
