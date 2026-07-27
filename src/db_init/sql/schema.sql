@@ -1,4 +1,4 @@
-CREATE TYPE transaction_label AS ENUM('confirmed_legitimate', 'legitimate', 'unusual', 'suspicious', 'confirmed_fraudulent', 'rule_violation'); -- note that fraudulent covers both fraud and scam here
+CREATE TYPE transaction_label AS ENUM('confirmed_legitimate', 'legitimate', 'unusual', 'suspicious', 'confirmed_fraudulent', 'rule_violation', 'rule_approval'); -- note that fraudulent covers both fraud and scam here
 
 CREATE TABLE entities (
     id BIGSERIAL PRIMARY KEY,
