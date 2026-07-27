@@ -13,12 +13,24 @@ FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD = 5
 FRESH_ACCOUNT_AGE_THRESHOLD = timedelta(days=15)
 RECURRING_TRANSACTION_VOLUME_THRESHOLD = 5
 
+
 def check_rules(transaction, surrounding_info):
     """Checks the transaction against the current rules in ruleset"""
+    rule_approvals = []
     rule_violations = []
     unseen_device_retval = check_unseen_device(transaction, surrounding_info)
 
-    # Check suspcious rules first
+    # Check rule approval
+    for function in [check_recurring_transaction]:
+        retval = function(transaction, surrounding_info)
+        if retval is not None:
+            rule_approvals.append(retval)
+
+    if len(rule_approvals) > 0:
+        print(f"Ruleset Label: Legitimate. Rule approval(s): {rule_approvals}")
+        return (Label.LEGITIMATE, unseen_device_retval is not None)
+
+    # Check suspcious rules
     for function in [check_impossible_travel, check_merchant_type_suspicious_range]:
         retval = function(transaction, surrounding_info)
         if retval is not None:
@@ -28,7 +40,7 @@ def check_rules(transaction, surrounding_info):
         print(f"Ruleset Label: Suspicious. Rule violation(s): {rule_violations}")
         return (Label.SUSPICIOUS, unseen_device_retval is not None)
 
-    # Then check unusual rules
+    # Check unusual rules
     if unseen_device_retval is not None:
         rule_violations.append(unseen_device_retval)
 
@@ -48,8 +60,14 @@ def check_rules(transaction, surrounding_info):
     print("Ruleset Label: Legitimate.")
     return (Label.LEGITIMATE, unseen_device_retval is not None)
 
-def check_recurring_transaction(transaction, surrounding_info): 
-    pass
+
+def check_recurring_transaction(transaction, surrounding_info):
+    return (
+        RuleEnum.RECURRING_TRANSACTION
+        if surrounding_info["num_recurring"] >= RECURRING_TRANSACTION_VOLUME_THRESHOLD
+        else None
+    )
+
 
 def check_unseen_device(transaction, surrounding_info):
     """
@@ -169,6 +187,5 @@ def is_fresh_account(transaction, surrounding_info):
     return (
         surrounding_info["num_transactions"] < FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD
         # Be advised this is day as in 24 hour not by calendar day at midnight
-        or first_transaction_time
-        >= (transaction_time - FRESH_ACCOUNT_AGE_THRESHOLD)
+        or first_transaction_time >= (transaction_time - FRESH_ACCOUNT_AGE_THRESHOLD)
     )
