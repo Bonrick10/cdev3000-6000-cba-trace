@@ -12,3 +12,6 @@ class RuleEnum(Enum):
     EXCEED_7D_TOTAL = 4
     LARGE_AMOUNT_NEW_PAYEE = 5
     MERCHANT_TYPE_UNUSUAL_RANGE = 6
+    
+    # Rule Approval
+    RECURRING_TRANSACTION = 7

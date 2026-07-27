@@ -12,3 +12,4 @@ class Label(Enum):
     SUSPICIOUS = 4
     CONFIRMED_FRAUDULENT = 5
     RULE_VIOLATION = 6
+    RULE_APPROVAL = 7
