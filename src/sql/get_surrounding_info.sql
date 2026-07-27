@@ -45,6 +45,23 @@ last_transaction AS (
     AND transactions.transaction_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
   ORDER BY transactions.transaction_time DESC 
   LIMIT 1
+),
+num_recurring AS (
+  SELECT COUNT(id)
+    FROM transactions
+    WHERE
+      transactions.sender_bsb = %(sender_bsb)s
+      AND transactions.sender_account_number = %(sender_account_number)s
+      AND transactions.receiver_bsb = %(receiver_bsb)s
+      AND transactions.receiver_account_number = %(receiver_account_number)s
+      AND transactions.transaction_time <=  %(transaction_time)s::timestamptz - INTERVAL '%(RECURRING_TXN_AGE_THRESHOLD_DAYS)s days' -- older than 7 days
+      AND transactions.amount::numeric BETWEEN (%(amount)s - %(RECURRING_TXN_AMOUNT_VARIANCE)s) AND (%(amount)s + %(RECURRING_TXN_AMOUNT_VARIANCE)s) -- within +- $5
+      AND LEAST( -- thanks AI 
+          ABS((EXTRACT(HOUR FROM transactions.transaction_time::time) * 60 + EXTRACT(MINUTE FROM transactions.transaction_time::time)) -
+              (EXTRACT(HOUR FROM %(transaction_time)s::time) * 60 + EXTRACT(MINUTE FROM %(transaction_time)s::time))),
+          1440 - ABS((EXTRACT(HOUR FROM transactions.transaction_time::time) * 60 + EXTRACT(MINUTE FROM transactions.transaction_time::time)) -
+                  (EXTRACT(HOUR FROM %(transaction_time)s::time) * 60 + EXTRACT(MINUTE FROM %(transaction_time)s::time))) --1440 to wrap midnight
+      ) <= %(RECURRING_TXN_TIME_VARIANCE_MINUTES)s -- within 30 min time of day 
 )
 SELECT json_build_object(
   'device_seen_before', EXISTS (
@@ -78,11 +95,13 @@ SELECT json_build_object(
   'suspicious_threshold_lower', merchant_tags.suspicious_threshold_lower::numeric,
   'usual_threshold_lower', merchant_tags.usual_threshold_lower::numeric,
   'usual_threshold_upper', merchant_tags.usual_threshold_upper::numeric,
-  'suspicious_threshold_upper', merchant_tags.suspicious_threshold_upper::numeric
+  'suspicious_threshold_upper', merchant_tags.suspicious_threshold_upper::numeric,
+  'num_recurring', num_recurring.count
 )
 FROM 
   period_spending
   CROSS JOIN sender_entity
   CROSS JOIN transaction_history_metadata
+  CROSS JOIN num_recurring
   LEFT JOIN merchant_tags ON merchant_tags.id = %(merchant_tags)s -- These two may be NULL
   LEFT JOIN last_transaction ON TRUE;

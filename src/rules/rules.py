@@ -4,14 +4,14 @@ from datetime import datetime, timedelta
 
 from geopy.distance import geodesic
 
-from label import Label
-from rules.rule_enum import RuleEnum
+from src.label import Label
+from src.rules.rule_enum import RuleEnum
 
 IMPOSSIBLE_TRAVEL_THRESHOLD = 500  # Note that this is km/hr
 NEW_PAYEE_UNUSUAL_THRESHOLD = 10000
 FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD = 5
-FRESH_ACCOUNT_AGE_THRESHOLD_DAYS = 15
-
+FRESH_ACCOUNT_AGE_THRESHOLD = timedelta(days=15)
+RECURRING_TRANSACTION_VOLUME_THRESHOLD = 5
 
 def check_rules(transaction, surrounding_info):
     """Checks the transaction against the current rules in ruleset"""
@@ -48,6 +48,8 @@ def check_rules(transaction, surrounding_info):
     print("Ruleset Label: Legitimate.")
     return (Label.LEGITIMATE, unseen_device_retval is not None)
 
+def check_recurring_transaction(transaction, surrounding_info): 
+    pass
 
 def check_unseen_device(transaction, surrounding_info):
     """
@@ -168,5 +170,5 @@ def is_fresh_account(transaction, surrounding_info):
         surrounding_info["num_transactions"] < FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD
         # Be advised this is day as in 24 hour not by calendar day at midnight
         or first_transaction_time
-        >= (transaction_time - timedelta(days=FRESH_ACCOUNT_AGE_THRESHOLD_DAYS))
+        >= (transaction_time - FRESH_ACCOUNT_AGE_THRESHOLD)
     )

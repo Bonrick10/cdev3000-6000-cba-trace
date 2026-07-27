@@ -11,9 +11,9 @@ import collections
 import json
 from pathlib import Path
 
-from label import Label
-from rules.rules import check_rules
-from utils.db import NeonDB
+from src.label import Label
+from src.rules.rules import check_rules
+from src.utils.db import NeonDB
 
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
@@ -24,6 +24,9 @@ MODEL_SUSPICIOUS_THRESHOLD = 0.9
 # False to insert data as well
 DRYRUN_FLAG = True
 
+RECURRING_TXN_AGE_THRESHOLD_DAYS = 7
+RECURRING_TXN_AMOUNT_VARIANCE = 5.0
+RECURRING_TXN_TIME_VARIANCE_MINUTES = 30
 
 # For now this will just read in the new transaction from a json file
 # Ideally for the final demo the user would be able to enter a transaction through the frontend UI
@@ -42,9 +45,11 @@ def process_transaction(transaction):
     """
     db = NeonDB()
     # convert non entries into None - especially for merchant_tags which may not be provided
+    query_params = collections.defaultdict(lambda: None, transaction)
+    query_params.update({"RECURRING_TXN_AGE_THRESHOLD_DAYS": RECURRING_TXN_AGE_THRESHOLD_DAYS, "RECURRING_TXN_AMOUNT_VARIANCE": RECURRING_TXN_AMOUNT_VARIANCE, "RECURRING_TXN_TIME_VARIANCE_MINUTES": RECURRING_TXN_TIME_VARIANCE_MINUTES})
     surrounding_info = db.query(
         db.read_sql_file(SQL_DIR / "get_surrounding_info.sql"),
-        collections.defaultdict(lambda: None, transaction),
+        query_params
     )[0]["json_build_object"]
     print(surrounding_info)
 
@@ -90,6 +95,5 @@ def insert_db_entries(db, transaction, surrounding_info, label, is_unseen_device
                 transaction["transaction_time"],
             ],
         )
-
 
 process_transaction(read_transaction("src/test_new_transaction.json"))

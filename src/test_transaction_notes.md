@@ -1,4 +1,4 @@
-Device session 
+<!-- Device session 
 - id = 106411
 - entity_id = 120866
 - device_id = 14bfa6bb14875e45bba028a21ed38046    
@@ -47,4 +47,22 @@ New transaction from sender to receiver
 - sender lattitude = 1.0
 - sender longitude = 1.0
 - merchant tag -> points to one above 
-- device id -> one in session above
+- device id -> one in session above -->
+
+id   s_bsb,    s_acc_num    r_bsb   r_acc_num amount      transaction_time
+523	 100254	   100641439	169009	103444765	$169.93	2023-01-02 19:30:00+00
+2626  100254	100641439	169009	103444765	$170.00	2023-02-09 18:30:00+00
+
+sender entity = 112947
+merchant_tag = 5311
+session.id = 170517
+device_id = 17e62166fc8586dfa4d1bc0e1742c08b   
+sessino_start time = 2023-01-01 00:00:00+00
+
+new transaction 
+- amount = 165
+- transaction_time = 2023-02-10 19:00:00+00 // right in between prev 2 
+- sender lattitude = 1.0
+- sender longitude = 1.0
+- merchant tag 5311
+- device id -> 17e62166fc8586dfa4d1bc0e1742c08b   
