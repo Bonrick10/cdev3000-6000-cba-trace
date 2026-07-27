@@ -1,10 +1,11 @@
 """ Checks the transaction against the current rules in ruleset"""
 from datetime import datetime, timedelta
 from geopy.distance import geodesic
-from rules.rule_enum import RuleEnum
-from label import Label
 
-IMPOSSIBLE_TRAVEL_THRESHOLD = 500 # Note that this is km/hr
+from label import Label
+from rules.rule_enum import RuleEnum
+
+IMPOSSIBLE_TRAVEL_THRESHOLD = 500  # Note that this is km/hr
 NEW_PAYEE_UNUSUAL_THRESHOLD = 10000
 FRESH_ACCOUNT_NUM_TRANSACTIONS_THRESHOLD = 5
 FRESH_ACCOUNT_AGE_THRESHOLD_DAYS = 15
@@ -77,11 +78,8 @@ def check_impossible_travel(transaction, surrounding_info):
             surrounding_info["last_transaction_latitude"],
             surrounding_info["last_transaction_longitude"]
         ),
-        (
-            transaction["sender_latitude"],
-            transaction["sender_longitude"]
-        )
-        ).km
+        (transaction["sender_latitude"], transaction["sender_longitude"]),
+    ).km
     delta_time_hours = (
         datetime.fromisoformat(transaction["transaction_time"])
         - datetime.fromisoformat(surrounding_info["last_transaction_time"])
@@ -94,6 +92,7 @@ def check_impossible_travel(transaction, surrounding_info):
             if distance / delta_time_hours > IMPOSSIBLE_TRAVEL_THRESHOLD
             else None)
 
+
 def check_large_amount_to_new_payee(transaction, surrounding_info):
     """ 4. Transactions in excess of $10 000 to new payees -> unusual """
     if is_fresh_account(transaction, surrounding_info):
@@ -104,8 +103,9 @@ def check_large_amount_to_new_payee(transaction, surrounding_info):
         if surrounding_info["is_new_payee"] and transaction["amount"] > NEW_PAYEE_UNUSUAL_THRESHOLD
         else None )
 
+
 def check_merchant_type_unusual_range(transaction, surrounding_info):
-    """ 5. Transactions outside of normal range for merchant type -> unusual """
+    """5. Transactions outside of normal range for merchant type -> unusual"""
     # Note that lower and upper thresholds may be NULL
     return (RuleEnum.MERCHANT_TYPE_UNUSUAL_RANGE
         if (
@@ -121,7 +121,7 @@ def check_merchant_type_unusual_range(transaction, surrounding_info):
         ) else None )
 
 def check_merchant_type_suspicious_range(transaction, surrounding_info):
-    """ 6. Transactions far exceed normal range for merchant type -> suspicious  """
+    """6. Transactions far exceed normal range for merchant type -> suspicious"""
     # Note that lower and upper thresholds may be NULL
     return (RuleEnum.MERCHANT_TYPE_SUSPICIOUS_RANGE
         if (

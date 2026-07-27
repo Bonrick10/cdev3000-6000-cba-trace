@@ -1,14 +1,15 @@
-""" 
-    Fraud detection system that runs when a new transaction is entered, the process goes as follows
-    1. Checks the transaction against the ruleset 
-    2. Uses the large model to determine a score, and checks if that score exceeds a threshold 
-    3. Uses the small model to determine whether the transaction falls in a cluster that 
-        has many cases of fraud
-    If any point fails then the transaction is blocked, otherwise it is allowed to go through
+"""
+Fraud detection system that runs when a new transaction is entered, the process goes as follows
+1. Checks the transaction against the ruleset
+2. Uses the large model to determine a score, and checks if that score exceeds a threshold
+3. Uses the small model to determine whether the transaction falls in a cluster that
+    has many cases of fraud
+If any point fails then the transaction is blocked, otherwise it is allowed to go through
 """
 import collections
 from pathlib import Path
 import json
+
 from label import Label
 from rules.rules import check_rules
 from utils.db import NeonDB
@@ -22,19 +23,21 @@ MODEL_SUSPICIOUS_THRESHOLD = 0.9
 # False to insert data as well
 DRYRUN_FLAG = True
 
+
 # For now this will just read in the new transaction from a json file
 # Ideally for the final demo the user would be able to enter a transaction through the frontend UI
 # Which would send the transaction in a JSON format to the backend which can then call this function
 def read_transaction(filename):
-    """ Reads in transaction from json file """
+    """Reads in transaction from json file"""
     with open(filename, "r", encoding="utf-8") as file:
         contents = json.load(file)
         return contents
 
+
 def process_transaction(transaction):
     """
-        Fraud detection pipeline that determines whether a transaction is fraud or not
-        Using ruleset, large and small models
+    Fraud detection pipeline that determines whether a transaction is fraud or not
+    Using ruleset, large and small models
     """
     db = NeonDB()
     # convert non entries into None - especially for merchant_tags which may not be provided
