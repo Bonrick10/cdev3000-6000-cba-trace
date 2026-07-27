@@ -1,5 +1,7 @@
-""" Data Population Module """
+"""Data Population Module"""
+
 from pathlib import Path
+
 from utils.db import NeonDB
 
 BASE_DIR = Path(__file__).resolve().parent
