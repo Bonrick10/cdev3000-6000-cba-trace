@@ -55,13 +55,12 @@ def gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, dev
     """
     r = random.random()
     
-    return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
-    # if r < SUSPICIOUS_TXN_RATE:
-    #     return gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
-    # elif r < SUSPICIOUS_TXN_RATE + UNUSUAL_TXN_RATE:
-    #     return gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
-    # else:
-    #     return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
+    if r < SUSPICIOUS_TXN_RATE:
+        return gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
+    elif r < SUSPICIOUS_TXN_RATE + UNUSUAL_TXN_RATE:
+        return gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
+    else:
+        return gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
 
 def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
@@ -122,7 +121,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         "transaction_time": new_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": "legitimate",
+        "label": None,
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
@@ -183,7 +182,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
         "transaction_time": new_txn_time["txn_time"],
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": "suspicious",
+        "label": None,
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
@@ -249,7 +248,7 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
         "transaction_time": new_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": "suspicious",
+        "label": None,
         "merchant_tags": merchant_tag,
         "device_id": device_id
     }
@@ -287,36 +286,9 @@ def gen_impossible_travel_txn(seed_account, seed_acc_txns, accounts, merchants, 
         "transaction_time": second_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": "suspicious",
+        "label": None,
         "merchant_tags": second_txn["merchant_tags"],
         "device_id": second_txn["device_id"]
     }
 
     return [first_txn, second_txn]
-
-# def generate_new_txn_time() -> datetime:
-#     """
-#     Generate a realistic new_txn_time for a transaction.
-
-#     Returns:
-#         A datetime object representing the transaction time.
-#     """
-#     weekday_bias = random.random() < 0.8
-#     day_offset = random.randint(0, 4) if weekday_bias else random.randint(5, 6)
-
-#     base_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-#     date = base_date + timedelta(days=day_offset)
-
-#     r2 = random.random()
-#     if r2 < 0.80:
-#         hour = random.randint(7, 21)
-#     elif r2 < 0.95:
-#         hour = random.randint(5, 6)
-#     else:
-#         hour = random.randint(22, 23)
-
-#     minute = random.randint(0, 59)
-#     second = random.randint(0, 59)
-
-#     return date.replace(hour=hour, minute=minute, second=second)
-

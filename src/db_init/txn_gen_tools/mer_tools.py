@@ -11,7 +11,7 @@ def choose_known_merchant_receiver(seed_acc_txns, merchants, merchant_tags):
     ]
 
     if len(past_merchant_txns) == 0: 
-        # fallback since potentially all the young transactions went to p2p
+        # fallback since potentially all the young transactions went to p2p (forced unusual)
         return choose_any_merchant_receiver(merchants, merchant_tags)
 
     merchant = random.choice(past_merchant_txns)

@@ -1,58 +1,69 @@
+from datetime import datetime, timedelta, timezone
+import secrets
 import random
 
-def generate_random_device_id() -> str:
+SESSION_DURATION = timedelta(hours=1)
+END_TIME = datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc) # 2026-06-30 23:59:59+00
+
+def gen_new_device_id(entity_id, timestamp, db) -> str:
     """
-    Generate a random 64-character hex device ID.
+    Generate a random 64-character hex device ID and generates a new session with it
 
     Returns:
         A device ID string.
     """
-    return secrets.token_hex(32)
-
-# TODO: Choose session that has start time before and end time after cur_time
-# TODO: These two are stubbed and incomplete for now  
-def choose_any_device(devices):
-    # For now this returns any existing device_id even if not related to account entity 
-    return random.choice(devices)["device_id"]
-
-def choose_known_device(seed_acc_txns, devices):
-    known_devices = [txn["device_id"] for txn in seed_acc_txns]
-
-    if len(known_devices) == 0: 
-        # TODO: Figure out why sometimes empty since should have inserted some during young stage, fallback for now 
-        return choose_any_device(seed_account, devices)
-
-    return random.choice(known_devices["device_id"])
-
-# import uuid
-# import hashlib
-
-# def gen_new_device(devices, timestamp, db):
-#     """
-#     Generate a list of random devices.
-#     """
-#     while True:
-#         device_id = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()
-
-#         check_device = db.query(
-#             """
-#             SELECT * FROM device_sessions " \
-#             WHERE device_id = %(device_id)s
-#             """,  {"device_id": device_id})
-#         if not check_device:
-            
-#             db.execute(
-#                 """
-#                 INSERT INTO device_sessions (
-#                     id, 
-#                     entity_id, 
-#                     device_id, 
-#                     session_start_time, 
-#                     session_end_time) 
-#                 VALUES (%(device_id)s)
-#                 """, {
-#                     "device_id": device_id}
-#             )
-#             break
+    device_id = secrets.token_hex(32)
+    gen_device_session(device_id, timestamp, entity_id, db)
     
-#     return device_id
+    return device_id 
+
+# Why would this happen? Should it be a new rule?
+# def choose_any_device(devices):
+#     # For now this returns any existing device_id even if not related to account entity 
+#     return random.choice(devices)["device_id"]
+
+def choose_known_device(entity_id, seed_acc_txns, timestamp, db):
+    """
+    Chooses a known device and generates a new session.
+
+    Returns:
+        A device ID string.
+    """
+    known_devices = {txn["device_id"] for txn in seed_acc_txns}
+    
+    if len(known_devices) == 0: 
+        # Fresh account, no known devices, generate a new device (forced to be unusual) 
+        return gen_new_device_id(entity_id, timestamp, db)
+        
+    device_id = random.choice(list(known_devices))
+    gen_device_session(device_id, timestamp, entity_id, db)
+    
+    return device_id
+
+def gen_device_session(device_id, session_start_time, entity_id, db):
+    """
+    Generate a device session for a given device ID and session_start_time.
+    """
+    # This emulates a logout
+    noisy_session_duration = SESSION_DURATION + timedelta(minutes=random.randint(-5, 5))
+    session_end_time = session_start_time + noisy_session_duration
+
+    # The static NOW time would represent active sessions with a Null end time
+    if session_end_time > END_TIME:
+        session_end_time = None
+    
+    db.execute(
+        """
+        INSERT INTO device_sessions (
+            entity_id,
+            device_id,
+            session_start_time,
+            session_end_time
+        ) VALUES (%(entity_id)s, %(device_id)s, %(session_start_time)s, %(session_end_time)s)
+        """, {
+            "entity_id": entity_id,
+            "device_id": device_id,
+            "session_start_time": session_start_time,
+            "session_end_time": session_end_time
+        }
+    )

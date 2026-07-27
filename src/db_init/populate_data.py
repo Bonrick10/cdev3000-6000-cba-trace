@@ -44,6 +44,7 @@ def gen_all_txns():
     }
     # Array of device_ids
     device_sessions = db.query("SELECT * FROM device_sessions;")
+    
     # Key is tuple of (bsb, account_number) value is arr of transaction dicts
     # (should be ascending time ordered since insert in order of timeline)
     account_txns = {(account["bsb"], account["account_number"]): [] for account in accounts}
