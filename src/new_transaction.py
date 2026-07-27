@@ -6,9 +6,10 @@ Fraud detection system that runs when a new transaction is entered, the process 
     has many cases of fraud
 If any point fails then the transaction is blocked, otherwise it is allowed to go through
 """
+
 import collections
-from pathlib import Path
 import json
+from pathlib import Path
 
 from label import Label
 from rules.rules import check_rules
@@ -43,8 +44,8 @@ def process_transaction(transaction):
     # convert non entries into None - especially for merchant_tags which may not be provided
     surrounding_info = db.query(
         db.read_sql_file(SQL_DIR / "get_surrounding_info.sql"),
-        collections.defaultdict(lambda: None, transaction
-        ))[0]["json_build_object"]
+        collections.defaultdict(lambda: None, transaction),
+    )[0]["json_build_object"]
     print(surrounding_info)
 
     ruleset_label, is_unseen_device = check_rules(transaction, surrounding_info)
@@ -62,8 +63,9 @@ def process_transaction(transaction):
     print(f"Final label: {final_label}")
     return final_label
 
+
 def insert_db_entries(db, transaction, surrounding_info, label, is_unseen_device):
-    """ Insert appropriate db entries for new transaction if not a dryrun """
+    """Insert appropriate db entries for new transaction if not a dryrun"""
     if DRYRUN_FLAG:
         return
 
@@ -76,14 +78,18 @@ def insert_db_entries(db, transaction, surrounding_info, label, is_unseen_device
     if is_unseen_device:
         # If device and entity combination not seen before, add a new session for this combination
         # TODO: Also add session if combination seen before but expired
-        db.execute("""
+        db.execute(
+            """
             INSERT INTO 
                 device_sessions (entity_id, device_id, session_start_time, session_end_time)
             VALUES (%s, %s, %s, NULL)
-        """, [
-            surrounding_info["entity_id"],
-            transaction["device_id"],
-            transaction["transaction_time"]
-        ])
+        """,
+            [
+                surrounding_info["entity_id"],
+                transaction["device_id"],
+                transaction["transaction_time"],
+            ],
+        )
+
 
 process_transaction(read_transaction("src/test_new_transaction.json"))
