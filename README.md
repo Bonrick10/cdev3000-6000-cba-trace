@@ -40,9 +40,10 @@ src/
 - _confirmed\_legitimate_ - confirmed by customer to be legitimate
 - _legitimate_ - Fraud detection system determines transaction to be normal - lets transaction through
 - _unusual_ - Fraud detection system determines transaction to be outside of usual behaviour - lets transaction through
-- _suspicious_ - Fraud detection system determines transaction to be potential fraud/scam - blocks transaction 
+- _suspicious_ - Fraud detection system determines transaction to be potential fraud/scam - lets transaction through but gives an alert
 - _confirmed\_fraudulent_ - confirmed by customer to be fraud, done after transaction has already gone through (uncaught by fraud detection system)
 - _rule\_violation_ - violates ruleset - instantly blocked before reaches model
+- _rule\_approval_ - Ruleset determines that this is very likely to be legitimate, instantly approved bypassing model
 ### Rules/Scenarios
 ### Approval
 0. History of 5 or more transactions older than 7 days to the same payee within +- $5 and +- 30 min time of day -> _rule\_approval_
