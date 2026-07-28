@@ -45,16 +45,16 @@ src/
 - _rule\_violation_ - violates ruleset - instantly blocked before reaches model
 - _rule\_approval_ - Ruleset determines that this is very likely to be legitimate, instantly approved bypassing model
 ### Rules/Scenarios
-### Approval
+#### Approval
 0. History of 5 or more transactions older than 7 days to the same payee within +- $5 and +- 30 min time of day -> _rule\_approval_
-### Uncertain 
+#### Uncertain 
 1. Transaction made from a previously unseen device associated with the customer -> _unusual_ 
 2. 24 hour spending exceeds customer's cumulative 7 day total -> _unusual_
 3. Two transactions made more than 500km apart per hour -> _suspicious_
 4. Transactions in excess of $10 000 to new payees -> _unusual_ 
 5. Transactions outside of normal range for merchant type -> _unusual_  
 6. Transactions far exceed normal range for merchant type -> _suspicious_  
-### Scenario missed by ruleset caught by big model
+#### Scenario missed by ruleset caught by big model
 7. TODO
-### Emerging fraud trend missed by big model caught by small model 
+#### Emerging fraud trend missed by big model caught by small model 
 8. TODO
