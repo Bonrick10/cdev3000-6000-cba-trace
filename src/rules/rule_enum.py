@@ -1,19 +1,15 @@
-"""Enum type for Rule violations"""
+"""Stable identifiers for individual rules."""
 
 from enum import Enum
 
 
-class RuleEnum(Enum):
-    """Enum for which rules have been violated"""
+class RuleEnum(str, Enum):
+    """Rule identifiers persisted in decision evidence."""
 
-    # Suspicious Rules
-    IMPOSSIBLE_TRAVEL = 1
-    MERCHANT_TYPE_SUSPICIOUS_RANGE = 2
-    # Unusual Rules
-    UNSEEN_DEVICE = 3
-    EXCEED_7D_TOTAL = 4
-    LARGE_AMOUNT_NEW_PAYEE = 5
-    MERCHANT_TYPE_UNUSUAL_RANGE = 6
-
-    # Rule Approval
-    RECURRING_TRANSACTION = 7
+    IMPOSSIBLE_TRAVEL = "impossible_travel"
+    MERCHANT_TYPE_SUSPICIOUS_RANGE = "merchant_type_suspicious_range"
+    UNSEEN_DEVICE = "unseen_device"
+    EXCEED_7D_TOTAL = "exceed_7d_total"
+    LARGE_AMOUNT_NEW_PAYEE = "large_amount_new_payee"
+    MERCHANT_TYPE_UNUSUAL_RANGE = "merchant_type_unusual_range"
+    RECURRING_TRANSACTION = "recurring_transaction"

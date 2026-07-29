@@ -1,60 +1,76 @@
-# cdev3000-6000-cba-trace
-## Setup 
-### Environment Setup 
-- `python3 -m venv venv` - Make a new python virtual environment, do this once during setup 
-- `source venv/bin/activate` Use the newly created python virtual environment - Do this every time you open up a new terminal 
-- `pip install -r requirements.txt` - Use this to install necessary libraries for this project, Do this during initial setup, and also if new libraries are added
-- Copy `.env.example` into `.env` and change environment variables to appropriate values
-### Database Setup 
-- To read in schema to remote db use `psql 'postgresql://[user]:[password]@[neon_hostname][:port]/[dbname]' -f ./schema.sql`
-    - Only do this if neon remote db isn't already set up or to reset it.
+# CBA Trace fraud detection
 
-## Source Code Directory Structure
-The interface of the code is primarily called and controlled by init.py and main.py where init.py handles initialisation of the database while main handles model training and output (subject to change)
+The transaction pipeline separates known rules, global supervised risk, and
+emerging fraud-pattern monitoring:
 
-src/
-├── db_init/
-│   ├── db.py
-│   ├── neon_connection.py
-│   └── sql/
-│       ├── clear_tables.sql
-│       ├── populate_tables.sql
-│       └── seed_transactions.sql
-│
-├── rules/
-│   ├──label_transactions.py
-│   └── sql/
-│       └── fraud_rules.sql
-│
-├── big_model/
-├── small_model/
-├── utils/
-│
-├── main.py
-└── init.py
+1. Rules either block as `rule_violation`, approve as `rule_approval`, approve
+   and alert as `rule_alert`, or pass the attempt to both models.
+2. The big model is a leakage-safe logistic-regression probability model.
+3. The small model learns versioned K-Means fraud neighbourhoods from
+   `confirmed_fraudulent` transactions and profiles the eligible wider
+   population around them.
+4. The post-rules decision uses the more severe model label. Model-owned
+   `suspicious` results are approved and investigated; only a
+   `rule_violation` blocks.
 
-## During Development
-- `pip freeze > requirements.txt` - Use when you pip install something to save the list of libraries used 
-## Cheat Sheet 
-### Labels
-- _confirmed\_legitimate_ - confirmed by customer to be legitimate
-- _legitimate_ - Fraud detection system determines transaction to be normal - lets transaction through
-- _unusual_ - Fraud detection system determines transaction to be outside of usual behaviour - lets transaction through
-- _suspicious_ - Fraud detection system determines transaction to be potential fraud/scam - lets transaction through but gives an alert
-- _confirmed\_fraudulent_ - confirmed by customer to be fraud, done after transaction has already gone through (uncaught by fraud detection system)
-- _rule\_violation_ - violates ruleset - instantly blocked before reaches model
-- _rule\_approval_ - Ruleset determines that this is very likely to be legitimate, instantly approved bypassing model
-### Rules/Scenarios
-#### Approval
-0. History of 5 or more transactions older than 7 days to the same payee within +- $5 and +- 30 min time of day -> _rule\_approval_
-#### Uncertain 
-1. Transaction made from a previously unseen device associated with the customer -> _unusual_ 
-2. 24 hour spending exceeds customer's cumulative 7 day total -> _unusual_
-3. Two transactions made more than 500km apart per hour -> _suspicious_
-4. Transactions in excess of $10 000 to new payees -> _unusual_ 
-5. Transactions outside of normal range for merchant type -> _unusual_  
-6. Transactions far exceed normal range for merchant type -> _suspicious_  
-#### Scenario missed by ruleset caught by big model
-7. TODO
-#### Emerging fraud trend missed by big model caught by small model 
-8. TODO
+Every persisted attempt has a `transaction_decisions` row preserving rules,
+model evidence, versions, final label, and action.
+
+## Setup
+
+Python 3.11 or later is required.
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+cp .env.example .env
+```
+
+Set `DATABASE_URL` in `.env`. Do not commit that file.
+
+For a fresh database only:
+
+```bash
+psql "$DATABASE_URL" -f src/db_init/sql/schema.sql
+psql "$DATABASE_URL" -f src/db_init/sql/synthetic_population.sql
+```
+
+For an existing database, back it up and run the migrations individually and
+in order. The enum migration must commit before the new value is referenced:
+
+```bash
+psql "$DATABASE_URL" -f src/db_init/sql/migrations/001_add_rule_alert.sql
+psql "$DATABASE_URL" -f src/db_init/sql/migrations/002_transaction_decisions.sql
+psql "$DATABASE_URL" -f src/db_init/sql/migrations/003_pipeline_indexes.sql
+```
+
+No migration runs automatically. The repository also does not reset or
+regenerate a remote database during model training.
+
+## Commands
+
+```bash
+python -m src.main train-big
+python -m src.main train-small
+python -m src.main process src/test_new_transaction.json
+python -m src.main report 123 confirmed_fraudulent
+python -m src.main refresh-small
+pytest
+ruff check .
+```
+
+The big model reads transactions older than the two-calendar-month maturity
+cutoff, creates every row from strictly prior history, maps mature labels only
+in memory, and saves the complete preprocessing pipeline with `joblib`.
+
+The small model excludes all rules-bypassed attempts, fits candidate fraud
+clusters using behavioural features only, assigns the eligible population,
+and applies support, fraud-count, Wilson-bound, and assignment-distance
+controls. K-Means is used for maintainable live assignment; MiniBatchKMeans is
+selected automatically for at least 50,000 confirmed fraud rows. Cluster IDs
+are valid only with their stored model version.
+
+Customer corrections are recorded atomically. Cluster statistics can refresh
+immediately without changing centroids; confirmed fraud feedback also marks a
+periodic cluster rebuild as recommended.

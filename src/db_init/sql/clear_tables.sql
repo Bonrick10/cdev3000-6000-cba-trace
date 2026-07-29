@@ -1,4 +1,5 @@
 TRUNCATE TABLE
+    transaction_decisions,
     accounts,
     branches,
     corrections,
