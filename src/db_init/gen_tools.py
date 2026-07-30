@@ -13,20 +13,30 @@ import random
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Tuple, List, Any
-from src.utils.db import NeonDB
-from src.db_init.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools 
+from utils.db import NeonDB
+from db_init.txn_gen_tools import mer_tools, p2p_tools, loc_tools, device_tools 
 
 THRESHOLD_LOW_TXNS = 5
 THRESHOLD_YOUNG_ACC = timedelta(days=15)
 SUSPICIOUS_TXN_RATE = 0.004
 UNUSUAL_TXN_RATE = 0.010
 RECEIVER_MERCHANT_RATE = 0.80
+LABELS = [
+    'confirmed_legitimate', 
+    'legitimate', 
+    'unusual', 
+    'suspicious', 
+    'confirmed_fraudulent', 
+    'rule_violation'
+    ]
 
 import random
 from datetime import timedelta
 
 def gen_timeline(base_time, end_time):
-    step = timedelta(minutes=5)
+    # step = timedelta(minutes=5)
+    # step = timedelta(hours=2)
+    step = timedelta(hours=12)
     noise_seconds = 90
 
     total_seconds = (end_time - base_time).total_seconds()
@@ -92,7 +102,8 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
             merchant_tag = None
     
         lat, lon = loc_tools.gen_rand_loc()
-        device_id = device_tools.choose_any_device(device_sessions)
+        entity_id = seed_account["entity_id"]
+        device_id = device_tools.gen_new_device_id(entity_id, new_txn_time, db)
     else:
         # Established account - do known receiver for legit
         r = random.random()
@@ -110,9 +121,10 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
             )
             merchant_tag = None
         lat, lon = loc_tools.gen_near_loc(seed_acc_txns)
-        device_id = device_tools.choose_known_device(seed_acc_txns, device_sessions)
+        entity_id = seed_account["entity_id"]
+        device_id = device_tools.choose_known_device(entity_id, seed_acc_txns, new_txn_time, db)
     
-    return {
+    return [{
         "sender_bsb": seed_account["bsb"],
         "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
@@ -121,10 +133,10 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         "transaction_time": new_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": None,
+        "label": LABELS[1],
         "merchant_tags": merchant_tag,
         "device_id": device_id
-    }
+    }]
 
 def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
@@ -141,17 +153,17 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
     # 50% chance of new payee
     if random.random() < 0.5:
         receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_new_payee(
-                seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
-                merchants=merchants
+                merchants=merchants,
+                merchant_tags=merchant_tags
         )
     else:
         r = random.random()
         if r < RECEIVER_MERCHANT_RATE:
             receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_known_merchant_receiver(
-                seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
-                merchants=merchants
+                merchants=merchants,
+                merchant_tags=merchant_tags
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
@@ -163,29 +175,31 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
 
     # 30% chance of unusual location
     if random.random() < 0.3:
-        lat, lon = loc_tools.gen_unusual_loc(seed_account)
+        lat, lon = loc_tools.gen_rand_loc()
     else:
-        lat, lon = loc_tools.gen_normal_loc(seed_account)
+        lat, lon = loc_tools.gen_near_loc(seed_acc_txns)
 
     # 20% chance of unseen device
     if random.random() < 0.2:
-        device_id = device_tools.gen_new_device()
+        entity_id = seed_account["entity_id"]
+        device_id = device_tools.gen_new_device_id(entity_id, new_txn_time, db)
     else:
-        device_id = device_tools.choose_device_from_seed(seed_account, device_sessions)
+        entity_id = seed_account["entity_id"]
+        device_id = device_tools.choose_known_device(entity_id, seed_acc_txns, new_txn_time, db)
 
-    return {
+    return [{
        "sender_bsb": seed_account["bsb"],
         "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
         "receiver_account_number": receiver_acc,
         "amount": amount,
-        "transaction_time": new_txn_time["txn_time"],
+        "transaction_time": new_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": None,
+        "label": LABELS[2],
         "merchant_tags": merchant_tag,
         "device_id": device_id
-    }
+    }]
 
 def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
@@ -203,14 +217,12 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
         return gen_impossible_travel_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
     else:
         if random.random() > 0.6:
-            receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_random_merchant_receiver(
-                seed_account=seed_account,
-                seed_acc_txns=seed_acc_txns,
-                merchants=merchants
+            receiver_bsb, receiver_acc, merchant_tag, amount = mer_tools.choose_any_merchant_receiver(
+                merchants=merchants,
+                merchant_tags=merchant_tags
             )
         else:
-            receiver_bsb, receiver_acc, amount = p2p_tools.choose_random_p2p_receiver(
-                seed_account=seed_account,
+            receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(
                 seed_acc_txns=seed_acc_txns,
                 accounts=accounts
             )
@@ -223,23 +235,18 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
                 amount = round(random.uniform(min_amt * 0.5, min_amt), 2)
             else:
                 amount = round(random.uniform(max_amt, max_amt * 1.5), 2)
-                
-        # suspicious time-of-day
-        new_txn_time = new_txn_time.replace(
-            hour=random.choice([0, 1, 2, 3]),
-            minute=random.randint(0, 59),
-            second=random.randint(0, 59)
-        )
 
         # unseen device
         if random.random() > 0.5:
-            device_id = device_tools.gen_new_device()
+            entity_id = seed_account["entity_id"]
+            device_id = device_tools.gen_new_device_id(entity_id, new_txn_time, db)
         else:
-            device_id = device_tools.choose_device_from_seed(seed_account, device_sessions)
+            entity_id = seed_account["entity_id"]
+            device_id = device_tools.choose_known_device(entity_id, seed_acc_txns, new_txn_time, db)
 
         lat, lon = loc_tools.gen_near_loc(seed_acc_txns)
 
-    return {
+    return [{
         "sender_bsb": seed_account["bsb"],
         "sender_account_number": seed_account["account_number"],
         "receiver_bsb": receiver_bsb,
@@ -248,10 +255,10 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
         "transaction_time": new_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": None,
+        "label": LABELS[5],
         "merchant_tags": merchant_tag,
         "device_id": device_id
-    }
+    }]
 
 def remove_sender_from_account_list(sender_acc, account_list): 
     return list(filter(lambda acc: (acc["bsb"] != sender_acc["bsb"]) or (acc["account_number"] != sender_acc["account_number"]), account_list))
@@ -286,7 +293,7 @@ def gen_impossible_travel_txn(seed_account, seed_acc_txns, accounts, merchants, 
         "transaction_time": second_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": None,
+        "label": LABELS[5],
         "merchant_tags": second_txn["merchant_tags"],
         "device_id": second_txn["device_id"]
     }

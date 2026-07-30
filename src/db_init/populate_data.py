@@ -2,8 +2,8 @@
 from pathlib import Path
 import random
 from datetime import datetime, timedelta, timezone
-from src.utils.db import NeonDB
-import src.db_init.gen_tools as gen_tools
+from utils.db import NeonDB
+import db_init.gen_tools as gen_tools
 
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
@@ -57,9 +57,10 @@ def gen_all_txns():
         seed_acc_txns = account_txns[(seed_account["bsb"], seed_account["account_number"])]
 
         print(f"\rGenerating Transaction {index} of {len(timeline)}")
-        new_txn = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
-        account_txns[(seed_account["bsb"], seed_account["account_number"])].append(new_txn)
-        insert_txn(new_txn, db) 
+        new_txns = gen_tools.gen_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
+        for new_txn in new_txns:
+            account_txns[(seed_account["bsb"], seed_account["account_number"])].append(new_txn)
+            insert_txn(new_txn, db) 
 
 # def maybe_gen_correction(transaction, db):
 #     # 0.1% chance of correction

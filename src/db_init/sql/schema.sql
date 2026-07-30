@@ -57,6 +57,7 @@ CREATE TABLE transactions (
     sender_latitude Decimal(8,6) CHECK (sender_latitude >= -90 AND sender_latitude <= 90),
     sender_longitude Decimal(9,6) CHECK (sender_longitude >= -180 AND sender_longitude <= 180), -- https://stackoverflow.com/a/1196429
     label transaction_label, -- note this is the most up to date label after any corrections
+    true_label transaction_label,
     merchant_tags BIGINT REFERENCES merchant_tags(id),
     device_id CHAR(64) NOT NULL,
 
