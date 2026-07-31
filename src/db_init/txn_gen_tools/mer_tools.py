@@ -67,3 +67,12 @@ def get_merchant_legitimate_amount(merchant_tag):
     low = float(merchant_tag["usual_threshold_lower"])
     high = float(merchant_tag["usual_threshold_upper"])
     return round(random.uniform(low, high), 2)
+
+def get_merchant_data(merchant_tag, merchant_tags):
+    merchant_data = merchant_tags[merchant_tag]
+    
+    sus_lower = merchant_data["suspicious_threshold_lower"]
+    usual_lower = merchant_data["usual_threshold_lower"]
+    usual_upper = merchant_data["usual_threshold_upper"]
+    sus_upper = merchant_data["suspicious_threshold_upper"]
+    return sus_lower, usual_lower, usual_upper, sus_upper

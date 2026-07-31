@@ -1,11 +1,11 @@
 import random
 
-def choose_any_p2p_receiver(seed_account, accounts):
+def choose_any_p2p_receiver(accounts):
     receiver = random.choice(accounts)
     # Below the 10k unusual range TODO: Fix to proper amount
     return (receiver["bsb"], receiver["account_number"], random.uniform(0.0, 9999))
 
-def choose_known_p2p_receiver(seed_account, seed_acc_txns, accounts):
+def choose_known_p2p_receiver(seed_acc_txns, accounts):
     past_p2p_txns = [
         transaction for transaction in seed_acc_txns
         if transaction["merchant_tags"] is None
@@ -13,7 +13,7 @@ def choose_known_p2p_receiver(seed_account, seed_acc_txns, accounts):
 
     if len(past_p2p_txns) == 0: 
         # fallback since potentially all the young transactions went to merchant
-        return choose_any_p2p_receiver(seed_account, accounts)
+        return choose_any_p2p_receiver(accounts)
 
     chosen_txn = random.choice(past_p2p_txns)
 

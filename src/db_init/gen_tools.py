@@ -35,8 +35,8 @@ from datetime import timedelta
 
 def gen_timeline(base_time, end_time):
     # step = timedelta(minutes=5)
-    # step = timedelta(hours=2)
-    step = timedelta(hours=12)
+    step = timedelta(hours=2)
+    #step = timedelta(hours=12)
     noise_seconds = 90
 
     total_seconds = (end_time - base_time).total_seconds()
@@ -95,10 +95,7 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
                 merchant_tags=merchant_tags
         )
         else:
-            receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(
-                seed_account=seed_account,
-                accounts=remove_sender_from_account_list(seed_account, accounts)
-            )
+            receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(accounts)
             merchant_tag = None
     
         lat, lon = loc_tools.gen_rand_loc()
@@ -115,9 +112,8 @@ def gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tag
         )
         else:
             receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
-                seed_account=seed_account,
                 seed_acc_txns=seed_acc_txns,
-                accounts=remove_sender_from_account_list(seed_account, accounts)
+                accounts=accounts
             )
             merchant_tag = None
         lat, lon = loc_tools.gen_near_loc(seed_acc_txns)
@@ -166,8 +162,7 @@ def gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_t
                 merchant_tags=merchant_tags
         )
         else:
-            receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver(
-                seed_account=seed_account,
+            receiver_bsb, receiver_acc, amount = p2p_tools.choose_known_p2p_receiver( 
                 seed_acc_txns=seed_acc_txns,
                 accounts=accounts
             )
@@ -222,15 +217,12 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
                 merchant_tags=merchant_tags
             )
         else:
-            receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(
-                seed_acc_txns=seed_acc_txns,
-                accounts=accounts
-            )
+            receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(accounts=accounts)
             merchant_tag = None
 
         # force extreme amount
         if merchant_tag is not None and random.random() > 0.5:
-            min_amt, max_amt, _ = mer_tools.get_merchant_data(merchant_tag)
+            min_amt, _, _, max_amt = mer_tools.get_merchant_data(merchant_tag, merchant_tags)
             if random.random() > 0.5:
                 amount = round(random.uniform(min_amt * 0.5, min_amt), 2)
             else:
@@ -260,8 +252,8 @@ def gen_sus_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags,
         "device_id": device_id
     }]
 
-def remove_sender_from_account_list(sender_acc, account_list): 
-    return list(filter(lambda acc: (acc["bsb"] != sender_acc["bsb"]) or (acc["account_number"] != sender_acc["account_number"]), account_list))
+# def remove_sender_from_account_list(sender_acc, account_list): 
+#     return list(filter(lambda acc: (acc["bsb"] != sender_acc["bsb"]) or (acc["account_number"] != sender_acc["account_number"]), account_list))
 
 def gen_impossible_travel_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db):
     """
@@ -273,15 +265,16 @@ def gen_impossible_travel_txn(seed_account, seed_acc_txns, accounts, merchants, 
     """
 
     # Generate first transaction normally
-    first_txn = gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
-
+    first_txn_list = gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, new_txn_time, db)
+    first_txn = first_txn_list[0]
     # Generate any second transaction
     second_txn_time = new_txn_time + timedelta(minutes=random.randint(1, 10))
     if random.random() > 0.7:
-        second_txn = gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, second_txn_time, db)
+        second_txn_list = gen_legit_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, second_txn_time, db)
     else:
-        second_txn = gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, second_txn_time, db)
+        second_txn_list = gen_unusual_txn(seed_account, seed_acc_txns, accounts, merchants, merchant_tags, device_sessions, second_txn_time, db)
     
+    second_txn = second_txn_list[0]
     lat, lon = loc_tools.gen_far_loc(first_txn["sender_latitude"], first_txn["sender_longitude"])
     
     second_txn = {
