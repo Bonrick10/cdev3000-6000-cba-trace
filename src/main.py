@@ -1,6 +1,7 @@
-""" Main Module """
-from db_init.populate_data import generate_seed_data, gen_all_txns
+"""Main Module"""
 
-if __name__ == '__main__': 
+from src.db_init.populate_data import gen_all_txns, generate_seed_data
+
+if __name__ == "__main__":
     generate_seed_data()
     gen_all_txns()

@@ -2,7 +2,7 @@ Device session
 - id = 105028
 - entity_id = 147514
 - device_id = c20ad4d76fe97759aa27a0c99bff6710 
-- start_time = 2026-05-24 01:24:11.734022+00
+- start_time = 2026-11-24 10:24:11.734022+00
 - end_time = NULL 
 
 Sender Entity

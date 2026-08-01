@@ -1,33 +1,33 @@
 """Database connection utilities for Neon/Postgres."""
+
 import os
 import sys
+
 import psycopg2
-from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+from psycopg2.extras import RealDictCursor
 
 load_dotenv()
-class NeonDB:
-    """
-    Wrapper for connecting to Neon/Postgres using psycopg2.
-    """
-    def __init__(self, db_url=None):
-        """
-        Initialize the NeonDB instance and load the database URL.
-        """
 
+
+class NeonDB:
+    """Wrapper for connecting to Neon/Postgres using psycopg2.
+    """
+
+    def __init__(self, db_url=None):
+        """Initialize the NeonDB instance and load the database URL.
+        """
         self.db_url = db_url or os.getenv("DATABASE_URL")
         if not self.db_url:
             raise ValueError("DATABASE_URL environment variable is not set.")
 
     def connect(self):
-        """
-        Connects to the Neon/Postgres database.
+        """Connects to the Neon/Postgres database.
         """
         return psycopg2.connect(self.db_url, cursor_factory=RealDictCursor)
 
     def read_sql_file(self, filepath):
-        """
-        Reads an SQL file into a string and returns it
+        """Reads an SQL file into a string and returns it
         Can then be passed into query() and execute()
         """
         if not os.path.exists(filepath):
@@ -38,8 +38,7 @@ class NeonDB:
             return sql
 
     def query(self, sql, params=None):
-        """
-        Runs a SELECT query and returns results as Python dicts.
+        """Runs a SELECT query and returns results as Python dicts.
         """
         conn = self.connect()
         try:
@@ -50,8 +49,7 @@ class NeonDB:
             conn.close()
 
     def execute(self, sql, params=None):
-        """
-        Runs INSERT/UPDATE/DELETE queries.
+        """Runs INSERT/UPDATE/DELETE queries.
         """
         conn = self.connect()
         try:
