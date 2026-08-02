@@ -10,7 +10,8 @@ from utils.db import NeonDB
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
 SRC_DIR = BASE_DIR.parent
-BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+# BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+BASE_TIME = datetime(2023, 2, 17, 23, 40, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
 END_TIME = datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
 
 
@@ -19,14 +20,14 @@ def generate_seed_data():
     """
     db = NeonDB()
     print("Resetting database")
-    db.execute(db.read_sql_file(SQL_DIR / "clear_tables.sql"))
+    db.execute(db.read_sql_file(SQL_DIR / "clear_all_tables.sql"))
     print("Generating data")
     db.execute(db.read_sql_file(SQL_DIR / "synthetic_population.sql"))
-
 
 def gen_all_txns():
     db = NeonDB()
 
+    # db.execute(db.read_sql_file(SQL_DIR / "clear_testing_tables.sql"))
     # RIP Memory usage 💀
     # Array of account dicts
     accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")

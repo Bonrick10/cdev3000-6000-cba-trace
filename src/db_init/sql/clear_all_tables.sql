@@ -5,5 +5,5 @@ TRUNCATE TABLE
     device_sessions,
     entities,
     merchant_tags,
-    transactions
+    txns_testing
 RESTART IDENTITY CASCADE;

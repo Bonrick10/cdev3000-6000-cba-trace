@@ -29,6 +29,8 @@ LABELS = [
 
 
 def gen_timeline(base_time, end_time):
+    """Generates timeline array spaced evenly with noise.
+    """
     step = timedelta(minutes=5)
     # step = timedelta(hours=2)
     # step = timedelta(hours=12)
@@ -53,6 +55,10 @@ def gen_timeline(base_time, end_time):
 
     return txn_times
 
+
+def gen_rule_approved_txn():
+    """Generate 78% of txns that get rule approved
+    """
 
 def gen_txn(
     seed_account,
