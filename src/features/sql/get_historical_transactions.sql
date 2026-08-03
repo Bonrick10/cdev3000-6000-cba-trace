@@ -28,7 +28,7 @@ SELECT
             WHEN first_correction.old_label = 'rule_violation' THEN 'block'
         END
     ) AS action
-FROM transactions AS t
+FROM txns_testing AS t
 LEFT JOIN transaction_decisions AS d ON d.transaction_id = t.id
 LEFT JOIN merchant_tags AS mt ON mt.id = t.merchant_tags
 LEFT JOIN LATERAL (

@@ -1,8 +1,23 @@
+from pathlib import Path
+
 import pytest
 
 from src.contracts import Action
 from src.decision import combine_model_labels, decision_for_rule_exit
 from src.label import Label
+
+
+def test_existing_database_enum_migration_adds_both_rule_exit_labels():
+    migration = (
+        Path(__file__).parents[1]
+        / "src"
+        / "db_init"
+        / "sql"
+        / "migrations"
+        / "001_add_rule_alert.sql"
+    ).read_text(encoding="utf-8")
+    assert "'rule_approval'" in migration
+    assert "'rule_alert'" in migration
 
 
 def test_labels_match_database_strings():

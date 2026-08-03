@@ -60,9 +60,13 @@ pytest
 ruff check .
 ```
 
-The big model reads transactions older than the two-calendar-month maturity
-cutoff, creates every row from strictly prior history, maps mature labels only
-in memory, and saves the complete preprocessing pipeline with `joblib`.
+The big and small models read their development population from the
+`txns_testing` backup table. Live rules, insertion, corrections, and decision
+evidence continue to use `transactions`; keeping the backup synchronized is a
+data-generation responsibility. The big model retains only rows older than the
+two-calendar-month maturity cutoff, creates every row from strictly prior
+history, maps mature labels only in memory, and saves the complete preprocessing
+pipeline with `joblib`.
 
 The small model excludes all rules-bypassed attempts, fits candidate fraud
 clusters using behavioural features only, assigns the eligible population,

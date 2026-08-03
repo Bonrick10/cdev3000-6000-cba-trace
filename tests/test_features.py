@@ -7,6 +7,7 @@ from src.features import (
     build_live_features,
     is_model_eligible,
 )
+from src.features.data import SQL_DIRECTORY
 
 
 def _raw_rows():
@@ -84,3 +85,11 @@ def test_blocked_attempt_does_not_update_later_history():
     features = build_historical_features(rows)
     assert features.loc[1, "prior_transaction_count"] == 0
     assert is_model_eligible(features).tolist() == [False, True]
+
+
+def test_model_history_uses_transaction_backup_table():
+    sql = (SQL_DIRECTORY / "get_historical_transactions.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "FROM txns_testing AS t" in sql
+    assert "FROM transactions AS t" not in sql
