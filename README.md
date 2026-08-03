@@ -90,12 +90,20 @@ regenerate a remote database during model training.
 ```bash
 python -m src.main train-big
 python -m src.main train-small
+# Dry run: evaluate without inserting database rows
 python -m src.main process src/test_new_transaction.json
+# Explicitly persist the transaction and decision evidence
+python -m src.main process src/test_new_transaction.json --persist
 python -m src.main report 123 confirmed_fraudulent
 python -m src.main refresh-small
 pytest
 ruff check .
 ```
+
+Transaction processing defaults to a dry run for safe demos and testing. A dry
+run still reads historical context and runs the complete rules/model pipeline,
+but it does not insert into `transactions` or `transaction_decisions`. Pass
+`--persist` only when those rows should be recorded.
 
 The big and small models read their development population from the
 `txns_testing` backup table. Live rules, insertion, corrections, and decision

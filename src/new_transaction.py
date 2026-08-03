@@ -49,15 +49,15 @@ def process_transaction(
     *,
     db: Optional[NeonDB] = None,
     context: Optional[Dict[str, Any]] = None,
-    persist: bool = True,
+    persist: bool = False,
     big_predictor: Predictor = predict_big_model,
     small_predictor: Predictor = predict_small_model,
 ) -> Dict[str, Any]:
     """
-    Evaluate rules, route eligible attempts to both models, and persist evidence.
+    Evaluate rules and route eligible attempts to both models.
 
-    A supplied context and disabled persistence make the function deterministic
-    and database-free for tests. Production callers should use the defaults.
+    Persistence is deliberately opt-in so demos and tests cannot accidentally
+    insert transactions. Production callers must pass ``persist=True``.
     """
     pending = validate_transaction(transaction)
     database = db

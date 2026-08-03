@@ -28,7 +28,9 @@ def build_parser() -> argparse.ArgumentParser:
     process = commands.add_parser("process", help="process one transaction JSON file")
     process.add_argument("transaction_json")
     process.add_argument(
-        "--no-persist", action="store_true", help="evaluate without inserting rows"
+        "--persist",
+        action="store_true",
+        help="insert the transaction and decision evidence (default: dry run)",
     )
 
     commands.add_parser("train-big", help="train the mature supervised model")
@@ -50,7 +52,7 @@ def main() -> None:
     if args.command == "process":
         output = process_transaction(
             read_transaction(args.transaction_json),
-            persist=not args.no_persist,
+            persist=args.persist,
         )
     elif args.command == "train-big":
         output = train_big_model()["metadata"]

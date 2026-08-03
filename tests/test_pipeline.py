@@ -3,7 +3,9 @@ from threading import Barrier
 from src.new_transaction import process_transaction
 
 
-def test_rule_alert_exits_without_calling_models(transaction, safe_context):
+def test_rule_alert_defaults_to_dry_run_without_calling_models(
+    transaction, safe_context
+):
     safe_context["device_seen_before"] = False
 
     def must_not_run(_):
@@ -12,7 +14,6 @@ def test_rule_alert_exits_without_calling_models(transaction, safe_context):
     result = process_transaction(
         transaction,
         context=safe_context,
-        persist=False,
         big_predictor=must_not_run,
         small_predictor=must_not_run,
     )
