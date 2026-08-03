@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS transaction_decisions (
     decision_source TEXT NOT NULL,
     decision_reason TEXT NOT NULL,
     action VARCHAR(32) NOT NULL CHECK (
-        action IN ('approve', 'approve_and_alert', 'approve_and_investigate', 'block')
+        action IN ('approve', 'approve_and_alert', 'block')
     ),
     decision_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -20,6 +20,14 @@ def test_existing_database_enum_migration_adds_both_rule_exit_labels():
     assert "'rule_alert'" in migration
 
 
+def test_database_contract_has_one_alert_action():
+    schema = (
+        Path(__file__).parents[1] / "src" / "db_init" / "sql" / "schema.sql"
+    ).read_text(encoding="utf-8")
+    assert "'approve_and_alert'" in schema
+    assert "approve_and_investigate" not in schema
+
+
 def test_labels_match_database_strings():
     assert Label.parse("rule_alert") is Label.RULE_ALERT
     assert Label.parse("RULE_APPROVAL") is Label.RULE_APPROVAL
@@ -35,7 +43,7 @@ def test_rule_routes_are_source_aware():
 def test_models_take_worst_label_without_blocking():
     decision = combine_model_labels(Label.UNUSUAL, Label.SUSPICIOUS)
     assert decision.label is Label.SUSPICIOUS
-    assert decision.action is Action.APPROVE_AND_INVESTIGATE
+    assert decision.action is Action.APPROVE_AND_ALERT
 
 
 def test_models_cannot_return_rule_labels():

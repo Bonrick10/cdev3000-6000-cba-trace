@@ -59,9 +59,33 @@ def test_far_merchant_amount_is_blocking_and_beats_alert(transaction, safe_conte
     changed = deepcopy(transaction)
     changed["amount"] = 3_000
     safe_context["device_seen_before"] = False
+    safe_context["num_recurring"] = 5
     result = check_rules(changed, safe_context)
     assert result.label is Label.RULE_VIOLATION
     assert result.reasons == [RuleEnum.MERCHANT_TYPE_SUSPICIOUS_RANGE.value]
+
+
+def test_alert_beats_rule_approval(transaction, safe_context):
+    safe_context["num_recurring"] = 5
+    safe_context["device_seen_before"] = False
+    result = check_rules(transaction, safe_context)
+    assert result.label is Label.RULE_ALERT
+    assert RuleEnum.UNSEEN_DEVICE.value in result.reasons
+
+
+def test_fresh_account_skips_history_dependent_alerts(transaction, safe_context):
+    safe_context.update(
+        {
+            "first_transaction_time": None,
+            "prior_transaction_count": 0,
+            "device_seen_before": False,
+            "is_new_payee": True,
+            "prior_24h_spend": 0,
+            "prior_7d_spend": 0,
+        }
+    )
+    result = check_rules(transaction, safe_context)
+    assert result.label is Label.LEGITIMATE
 
 
 def test_normal_merchant_outlier_is_rule_alert(transaction, safe_context):

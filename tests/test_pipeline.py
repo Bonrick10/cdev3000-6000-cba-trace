@@ -1,3 +1,5 @@
+from threading import Barrier
+
 from src.new_transaction import process_transaction
 
 
@@ -37,12 +39,29 @@ def test_both_models_run_and_worst_label_wins(transaction, safe_context):
         },
     )
     assert result["final_label"] == "suspicious"
-    assert result["action"] == "approve_and_investigate"
+    assert result["action"] == "approve_and_alert"
     assert result["rules"]["label"] == "legitimate"
     assert result["model_versions"] == {
         "big_model": "big-1",
         "small_model": "small-1",
     }
+
+
+def test_model_predictions_run_concurrently(transaction, safe_context):
+    both_started = Barrier(2, timeout=2)
+
+    def predictor(_):
+        both_started.wait()
+        return {"predicted_label": "legitimate"}
+
+    result = process_transaction(
+        transaction,
+        context=safe_context,
+        persist=False,
+        big_predictor=predictor,
+        small_predictor=predictor,
+    )
+    assert result["final_label"] == "legitimate"
 
 
 def test_process_transaction_does_not_mutate_input(transaction, safe_context):

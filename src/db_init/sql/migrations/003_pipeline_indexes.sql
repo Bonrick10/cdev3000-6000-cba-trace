@@ -10,6 +10,8 @@ CREATE INDEX IF NOT EXISTS transactions_payee_time_idx
     );
 CREATE INDEX IF NOT EXISTS transactions_device_time_idx
     ON transactions(sender_bsb, sender_account_number, device_id, transaction_time);
+CREATE INDEX IF NOT EXISTS txns_testing_time_idx
+    ON txns_testing(transaction_time, id);
 CREATE INDEX IF NOT EXISTS corrections_transaction_time_idx
     ON corrections(transaction_id, correction_time);
 CREATE INDEX IF NOT EXISTS decisions_rules_label_idx

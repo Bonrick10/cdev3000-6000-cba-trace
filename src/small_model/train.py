@@ -32,6 +32,7 @@ from src.small_model.config import (
     MAX_CLUSTERS,
     MIN_FRAUDS_PER_CLUSTER,
     MODEL_PATH,
+    SMALL_MODEL_WINDOW_DAYS,
 )
 from src.small_model.statistics import (
     assignment_details,
@@ -62,10 +63,25 @@ def build_preprocessor() -> ColumnTransformer:
     )
 
 
-def prepare_population(raw_transactions: pd.DataFrame) -> pd.DataFrame:
-    """Build behavioural features and exclude every rules-bypassed route."""
+def prepare_population(
+    raw_transactions: pd.DataFrame, as_of: Optional[datetime] = None
+) -> pd.DataFrame:
+    """Build prior-history features, then select the eligible rolling window."""
     features = build_historical_features(raw_transactions)
-    return features[is_model_eligible(features)].reset_index(drop=True)
+    eligible = features[is_model_eligible(features)].copy()
+    if eligible.empty:
+        return eligible.reset_index(drop=True)
+    reference_time = pd.Timestamp(as_of or features["transaction_time"].max())
+    if reference_time.tzinfo is None:
+        reference_time = reference_time.tz_localize("UTC")
+    else:
+        reference_time = reference_time.tz_convert("UTC")
+    cutoff = reference_time - pd.Timedelta(days=SMALL_MODEL_WINDOW_DAYS)
+    recent = eligible[
+        (eligible["transaction_time"] >= cutoff)
+        & (eligible["transaction_time"] <= reference_time)
+    ]
+    return recent.reset_index(drop=True)
 
 
 def choose_clusterer(
@@ -185,11 +201,20 @@ def load_bundle(path: Path = MODEL_PATH) -> Dict[str, Any]:
     return bundle
 
 
-def train_from_database(path: Path = MODEL_PATH, db=None) -> Dict[str, Any]:
+def train_from_database(
+    path: Path = MODEL_PATH, db=None, as_of: Optional[datetime] = None
+) -> Dict[str, Any]:
     """Train from the current eligible historical population."""
-    population = prepare_population(read_historical_transactions(db=db))
+    population = prepare_population(read_historical_transactions(db=db), as_of)
     if population.empty:
         raise ValueError("No model-eligible transactions were found.")
     bundle = fit_small_model(population)
+    bundle["metadata"].update(
+        {
+            "population_window_days": SMALL_MODEL_WINDOW_DAYS,
+            "population_start": population["transaction_time"].min().isoformat(),
+            "population_end": population["transaction_time"].max().isoformat(),
+        }
+    )
     save_bundle(bundle, path)
     return bundle

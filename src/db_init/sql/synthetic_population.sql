@@ -1,6 +1,6 @@
 INSERT INTO branches (bsb, branch_location)
 SELECT
-    (g * 7919) % 90000 + 100000,
+    (sequence * 7919) % 90000 + 100000,
     (ARRAY['Sydney','Melbourne','Brisbane','Perth','Adelaide','Canberra',
     'Hobart','Darwin','Gold Coast','Newcastle','Wollongong','Geelong',
     'Townsville','Cairns','Toowoomba','Ballarat','Bendigo',
@@ -8,11 +8,11 @@ SELECT
     'Coffs Harbour','Port Macquarie','Tamworth','Armidale','Orange','Bathurst',
     'Albury','Wagga Wagga','Shepparton','Mildura','Warrnambool',
     'Bunbury','Geraldton','Kalgoorlie','Alice Springs','Mount Isa'] )[1 + (random() * 38)::int] AS branch_location
-FROM generate_series(1, 500) g;
+FROM generate_series(1, 500) AS sequence;
 
 INSERT INTO entities (id, given_name, surname, date_of_birth)
 SELECT 
-    (g * 7919) % 90000 + 100000,
+    (sequence * 7919) % 90000 + 100000,
     (ARRAY['John','Jane','Michael','Emily','David','Sarah','James','Olivia',
     'William','Emma','Benjamin','Ava','Lucas','Sophia','Mason','Isabella',
     'Ethan','Mia','Alexander','Charlotte'] )[1 + (random() * 19)::int] AS given_name,
@@ -20,27 +20,27 @@ SELECT
     'Davis','Rodriguez','Martinez','Hernandez','Lopez','Gonzalez',
     'Wilson','Anderson'] )[1 + (random() * 14)::int] AS surname,
     date '1950-01-01' + (random() * (date '2000-12-31' - date '1950-01-01'))::int AS date_of_birth
-FROM generate_series(1, 50) g;
+FROM generate_series(1, 50) AS sequence;
 
 INSERT INTO accounts (bsb, account_number, entity_id, funds)
 SELECT
-    b.bsb,
-    (100000000 + (g * 7919) % 900000000) AS account_number,
-    e.id,
+    branch.bsb,
+    (100000000 + (sequence * 7919) % 900000000) AS account_number,
+    entity.id,
     (random() * 10000)::numeric(10,2) AS funds
-FROM generate_series(1, 500) g
+FROM generate_series(1, 500) AS sequence
 CROSS JOIN LATERAL (
     SELECT bsb
     FROM branches
-    ORDER BY random() + g  -- forces correlation
+    ORDER BY random() + sequence  -- forces correlation
     LIMIT 1
-) b
+) AS branch
 CROSS JOIN LATERAL (
     SELECT id
     FROM entities
-    ORDER BY random() + g  -- forces correlation
+    ORDER BY random() + sequence  -- forces correlation
     LIMIT 1
-) e;
+) AS entity;
 
 INSERT INTO merchant_tags (
     id,
@@ -95,19 +95,19 @@ VALUES
 
 INSERT INTO device_sessions (id, entity_id, device_id, session_start_time, session_end_time)
 SELECT
-    (g * 7919) % 90000 + 100000,
-    e.id AS entity_id,
-    MD5(g::text) AS device_id,
+    (sequence * 7919) % 90000 + 100000,
+    entity.id AS entity_id,
+    MD5(sequence::text) AS device_id,
     NOW() - (random() * interval '365 days') AS session_start_time,
     (CASE
     WHEN random() < 0.3 THEN NULL
     ELSE (NOW() - (random() * interval '365 days'))
          + (random() * interval '4 hours')
     END) AS session_end_time
-FROM generate_series(1, 100) g
+FROM generate_series(1, 100) AS sequence
 CROSS JOIN LATERAL (
     SELECT id
     FROM entities
-    ORDER BY random() + g  -- forces correlation
+    ORDER BY random() + sequence  -- forces correlation
     LIMIT 1
-) e;
+) AS entity;

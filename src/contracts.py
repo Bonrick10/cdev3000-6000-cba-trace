@@ -14,7 +14,6 @@ class Action(str, Enum):
 
     APPROVE = "approve"
     APPROVE_AND_ALERT = "approve_and_alert"
-    APPROVE_AND_INVESTIGATE = "approve_and_investigate"
     BLOCK = "block"
 
 

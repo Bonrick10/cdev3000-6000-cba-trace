@@ -23,7 +23,7 @@ def test_pipeline_persistence_writes_attempt_evidence_and_new_device(transaction
     result = PipelineResult(
         final=FinalDecision(
             Label.SUSPICIOUS,
-            Action.APPROVE_AND_INVESTIGATE,
+            Action.APPROVE_AND_ALERT,
             "models",
             "test",
         ),
@@ -48,7 +48,7 @@ def test_pipeline_persistence_writes_attempt_evidence_and_new_device(transaction
         "insert_decision.sql",
         "insert_device_session.sql",
     ]
-    assert db.calls[1][1]["action"] == "approve_and_investigate"
+    assert db.calls[1][1]["action"] == "approve_and_alert"
     assert db.calls[1][1]["decision_source"] == "models"
     assert db.calls[1][1]["big_model_evidence"] is not None
 

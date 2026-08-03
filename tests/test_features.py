@@ -8,6 +8,7 @@ from src.features import (
     is_model_eligible,
 )
 from src.features.data import SQL_DIRECTORY
+from src.small_model.train import prepare_population
 
 
 def _raw_rows():
@@ -43,7 +44,7 @@ def _raw_rows():
                 "merchant_tag": "5411",
                 "device_id": "device",
                 "rules_label": "legitimate",
-                "action": "approve_and_investigate",
+                "action": "approve_and_alert",
             },
         ]
     )
@@ -91,5 +92,14 @@ def test_model_history_uses_transaction_backup_table():
     sql = (SQL_DIRECTORY / "get_historical_transactions.sql").read_text(
         encoding="utf-8"
     )
-    assert "FROM txns_testing AS t" in sql
-    assert "FROM transactions AS t" not in sql
+    assert "FROM txns_testing AS txn" in sql
+    assert "FROM transactions AS txn" not in sql
+    assert "COALESCE(latest_correction.new_label, txn.label)::text AS label" in sql
+
+
+def test_small_model_window_keeps_older_rows_only_as_feature_history():
+    rows = _raw_rows()
+    rows.loc[1, "transaction_time"] = "2025-04-01T10:00:00Z"
+    population = prepare_population(rows)
+    assert population["transaction_id"].tolist() == [2]
+    assert population.loc[0, "prior_transaction_count"] == 1

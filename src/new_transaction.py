@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
@@ -76,8 +77,13 @@ def process_transaction(
         )
     else:
         features = build_live_features(pending, prior_context)
-        big_evidence = dict(big_predictor(features))
-        small_evidence = dict(small_predictor(features))
+        with ThreadPoolExecutor(
+            max_workers=2, thread_name_prefix="fraud-model"
+        ) as pool:
+            big_future = pool.submit(big_predictor, features)
+            small_future = pool.submit(small_predictor, features)
+            big_evidence = dict(big_future.result())
+            small_evidence = dict(small_future.result())
         final = combine_model_labels(
             _model_label(big_evidence, "Big model"),
             _model_label(small_evidence, "Small model"),

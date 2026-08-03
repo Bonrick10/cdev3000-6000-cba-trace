@@ -10,11 +10,48 @@ emerging fraud-pattern monitoring:
    `confirmed_fraudulent` transactions and profiles the eligible wider
    population around them.
 4. The post-rules decision uses the more severe model label. Model-owned
-   `suspicious` results are approved and investigated; only a
+   `suspicious` results are approved and alerted; only a
    `rule_violation` blocks.
 
 Every persisted attempt has a `transaction_decisions` row preserving rules,
 model evidence, versions, final label, and action.
+
+## Labels and outcomes
+
+- `confirmed_legitimate`: confirmed by the customer to be legitimate.
+- `legitimate`: assessed as normal; approve.
+- `unusual`: outside usual behaviour; approve.
+- `suspicious`: potential fraud or scam; approve and alert.
+- `confirmed_fraudulent`: confirmed by the customer after processing.
+- `rule_violation`: a blocking rule triggered; block before model evaluation.
+- `rule_approval`: a high-confidence approval rule triggered; approve and bypass
+  both models.
+- `rule_alert`: an explicit unusual rule triggered; approve and alert while
+  bypassing both models.
+
+`approve_and_alert` is the single operational alert bucket. Its evidence and
+decision source distinguish a rules-owned alert from a model-owned suspicious
+assessment.
+
+## Rules and precedence
+
+When several rules trigger, the safety order is `rule_violation` > `rule_alert`
+> `rule_approval`:
+
+- At least five matching payments older than seven days to the same payee,
+  within $5 and 30 minutes of the current time of day: `rule_approval`.
+- Previously unseen customer device: `rule_alert`.
+- Current transaction plus prior 24-hour spending exceeds prior seven-day
+  spending: `rule_alert`.
+- Travel faster than 500 km/h from the previous transaction: `rule_violation`.
+- More than $10,000 to a new payee: `rule_alert`.
+- Outside the usual merchant-category amount range: `rule_alert`.
+- Outside the suspicious merchant-category amount range: `rule_violation`.
+
+Device, spending-history, and new-payee alerts are skipped while an account has
+fewer than five prior transactions or less than 15 days of history. Those
+signals do not have a meaningful baseline for a genuinely fresh account;
+merchant limits still apply.
 
 ## Setup
 
@@ -68,13 +105,28 @@ two-calendar-month maturity cutoff, creates every row from strictly prior
 history, maps mature labels only in memory, and saves the complete preprocessing
 pipeline with `joblib`.
 
-The small model excludes all rules-bypassed attempts, fits candidate fraud
-clusters using behavioural features only, assigns the eligible population,
-and applies support, fraud-count, Wilson-bound, and assignment-distance
-controls. K-Means is used for maintainable live assignment; MiniBatchKMeans is
-selected automatically for at least 50,000 confirmed fraud rows. Cluster IDs
-are valid only with their stored model version.
+The small model excludes all rules-bypassed attempts and uses a configurable
+rolling 60-day eligible population for clustering and fraud-rate statistics.
+Older rows remain available only while constructing leakage-safe prior-history
+features. Statistics refresh and retraining rebuild the window, naturally
+evicting expired population rows.
+
+It fits candidate fraud clusters using behavioural features only, assigns the
+eligible population, and applies support, fraud-count, Wilson-bound, and
+assignment-distance controls. K-Means is used for maintainable live assignment;
+MiniBatchKMeans is selected automatically for at least 50,000 confirmed fraud
+rows. Cluster IDs are valid only with their stored model version.
+
+Prediction assigns a new transaction to the nearest supported fraud
+neighbourhood but never mutates its centroid. The assignment and cluster
+evidence are persisted in `transaction_decisions`; centroids change only during
+a versioned rebuild.
 
 Customer corrections are recorded atomically. Cluster statistics can refresh
 immediately without changing centroids; confirmed fraud feedback also marks a
 periodic cluster rebuild as recommended.
+
+`transaction_decisions` is the audit record for routing and outcomes. Historical
+queries use it to identify model-routed attempts and to keep blocked attempts
+out of behavioural history. It also preserves the exact model versions and
+evidence that produced a decision.

@@ -38,7 +38,7 @@ def combine_model_labels(big_label: Label, small_label: Label) -> FinalDecision:
     actions = {
         Label.LEGITIMATE: Action.APPROVE,
         Label.UNUSUAL: Action.APPROVE,
-        Label.SUSPICIOUS: Action.APPROVE_AND_INVESTIGATE,
+        Label.SUSPICIOUS: Action.APPROVE_AND_ALERT,
     }
     return FinalDecision(
         final_label,

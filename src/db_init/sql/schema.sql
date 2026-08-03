@@ -79,6 +79,9 @@ CREATE TABLE transactions (
         REFERENCES accounts(bsb, account_number)
 );
 
+-- Read-only development backup maintained by the data-generation workflow.
+CREATE TABLE txns_testing (LIKE transactions INCLUDING ALL);
+
 CREATE TABLE transaction_decisions (
     transaction_id BIGINT PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
     rules_label transaction_label NOT NULL,
@@ -95,7 +98,7 @@ CREATE TABLE transaction_decisions (
     decision_source TEXT NOT NULL,
     decision_reason TEXT NOT NULL,
     action VARCHAR(32) NOT NULL CHECK (
-        action IN ('approve', 'approve_and_alert', 'approve_and_investigate', 'block')
+        action IN ('approve', 'approve_and_alert', 'block')
     ),
     decision_time TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -121,6 +124,7 @@ CREATE INDEX transactions_payee_time_idx
     );
 CREATE INDEX transactions_device_time_idx
     ON transactions(sender_bsb, sender_account_number, device_id, transaction_time);
+CREATE INDEX txns_testing_time_idx ON txns_testing(transaction_time, id);
 CREATE INDEX corrections_transaction_time_idx
     ON corrections(transaction_id, correction_time);
 CREATE INDEX decisions_rules_label_idx
