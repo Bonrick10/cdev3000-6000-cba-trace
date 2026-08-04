@@ -11,9 +11,13 @@ BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
 SRC_DIR = BASE_DIR.parent
 # BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
-BASE_TIME = datetime(2023, 2, 17, 23, 40, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
-END_TIME = datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
+BASE_TIME = datetime(2024, 5, 22, 20, 5, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+END_TIME = datetime(2024, 6, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
 
+STING_START_TIME_1 = datetime(2024, 6, 18, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+STING_END_TIME_1 = datetime(2024, 6, 21, 23, 59, 59, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+STING_START_TIME_2 = datetime(2024, 6, 25, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+STING_END_TIME_2 = datetime(2024, 6, 28, 23, 59, 59, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
 
 def generate_seed_data():
     """Populates the database with synthetic data.
@@ -23,6 +27,11 @@ def generate_seed_data():
     db.execute(db.read_sql_file(SQL_DIR / "clear_all_tables.sql"))
     print("Generating data")
     db.execute(db.read_sql_file(SQL_DIR / "synthetic_population.sql"))
+
+def gen_sting_txns():
+    db = NeonDB()
+    
+
 
 def gen_all_txns():
     db = NeonDB()
@@ -128,7 +137,8 @@ def insert_txn(txn, db):
             transaction_time,
             sender_latitude,
             sender_longitude,
-            label,
+            predicted_label,
+            true_label,
             merchant_tags,
             device_id
         ) VALUES (
@@ -140,7 +150,8 @@ def insert_txn(txn, db):
             %(transaction_time)s,
             %(sender_latitude)s,
             %(sender_longitude)s,
-            %(label)s,
+            %(predicted_label)s,
+            %(true_label)s,
             %(merchant_tags)s,
             %(device_id)s
         );

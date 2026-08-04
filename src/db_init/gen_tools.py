@@ -21,7 +21,7 @@ RECEIVER_MERCHANT_RATE = 0.80
 LABELS = [
     "confirmed_legitimate",
     "legitimate",
-    "unusual",
+    "rule_alert",
     "suspicious",
     "confirmed_fraudulent",
     "rule_violation",
@@ -55,6 +55,37 @@ def gen_timeline(base_time, end_time):
 
     return txn_times
 
+
+def gen_subscripts(accounts, merchants, merchant_tags, db):
+    """Generates Subscriptions for rule-approval purposes. 78% of transactions are rule-approved.
+    Subscriptions imply regular frequency payments.
+    """
+    for account in accounts:
+        n = random.randint(5, 10)  # Random number of subscriptions per account
+        account_bsb = account["bsb"]
+        account_number = account["account_number"]
+        for _ in range(n):
+            r = random.random()
+            if r < 0.5:
+                is_noisy = True
+            else:
+                is_noisy = False
+
+            
+            if random.random() < 0.7:
+                # 70% chance of merchant subscription
+                merchant = random.choice(merchants)
+                merchant_data = mer_tools.get_merchant_data(merchant["merchant_tag"], merchant_tags)
+                legitimate_amount = mer_tools.get_merchant_legitimate_amount(merchant_data)
+                subs_bsb = merchant["bsb"]
+                subs_account_number = merchant["account_number"]
+                db.execute(
+                    """
+                    INSERT INTO subscriptions (account_bsb, account_number, subs_bsb, subs_account_number, is_noisy)
+                    VALUES (%(bsb)s, %(account_number)s, TRUE)
+                    """,
+                    {"bsb": account["bsb"], "account_number": account["account_number"]},
+                )
 
 def gen_rule_approved_txn():
     """Generate 78% of txns that get rule approved
@@ -168,6 +199,10 @@ def gen_legit_txn(
         entity_id = seed_account["entity_id"]
         device_id = device_tools.choose_known_device(entity_id, seed_acc_txns, new_txn_time, db)
 
+    if random.random() < 0.02:
+        true_label = LABELS[4]
+    else:
+        true_label = LABELS[0]
     return [
         {
             "sender_bsb": seed_account["bsb"],
@@ -178,7 +213,8 @@ def gen_legit_txn(
             "transaction_time": new_txn_time,
             "sender_latitude": lat,
             "sender_longitude": lon,
-            "label": LABELS[1],
+            "predicted_label": LABELS[1],
+            "true_label": true_label,
             "merchant_tags": merchant_tag,
             "device_id": device_id,
         }
@@ -251,7 +287,8 @@ def gen_unusual_txn(
             "transaction_time": new_txn_time,
             "sender_latitude": lat,
             "sender_longitude": lon,
-            "label": LABELS[2],
+            "predicted_label": LABELS[2],
+            "true_label": LABELS[2],
             "merchant_tags": merchant_tag,
             "device_id": device_id,
         }
@@ -330,7 +367,8 @@ def gen_sus_txn(
             "transaction_time": new_txn_time,
             "sender_latitude": lat,
             "sender_longitude": lon,
-            "label": LABELS[5],
+            "predicted_label": LABELS[5],
+            "true_label": LABELS[5],
             "merchant_tags": merchant_tag,
             "device_id": device_id,
         }
@@ -407,7 +445,8 @@ def gen_impossible_travel_txn(
         "transaction_time": second_txn_time,
         "sender_latitude": lat,
         "sender_longitude": lon,
-        "label": LABELS[5],
+        "predicted_label": LABELS[5],
+        "true_label": LABELS[5],
         "merchant_tags": second_txn["merchant_tags"],
         "device_id": second_txn["device_id"],
     }
