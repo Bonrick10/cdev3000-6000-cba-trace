@@ -7,7 +7,8 @@ from geopy.distance import geodesic
 
 import db_init.gen_tools as gen_tools
 from db_init.txn_gen_tools.device_tools import choose_known_device, gen_new_device_id
-from db_init.txn_gen_tools.mer_tools import generate_merchant_legitimate_amount
+from db_init.txn_gen_tools.mer_tools import get_merchant_legitimate_amount
+from db_init.txn_gen_tools.loc_tools import gen_near_loc
 from utils.db import NeonDB
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -245,11 +246,11 @@ def gen_high_freq_txns():
             ORDER BY transaction_time DESC
         """, {"bsb": account["bsb"], "account_number": account["account_number"], "txn_time": txn_time})
 
-        base_amount = mer_tools.get_merchant_legitimate_amount(merchant_tags[merchant["merchant_tag"]])
+        base_amount = get_merchant_legitimate_amount(merchant_tags[merchant["merchant_tag"]])
 
         for m in range(10):
             amount = round(random.uniform(base_amount * 0.9, base_amount * 1.1), 2)
-            lat, lon = loc_tools.gen_near_loc(account_txns)
+            lat, lon = gen_near_loc(account_txns)
             device_id = choose_known_device(account["entity_id"], account_txns, txn_time, db)
 
             txn = {
@@ -266,7 +267,7 @@ def gen_high_freq_txns():
                 "merchant_tags": merchant["merchant_tag"],
                 "device_id": device_id,
             }
-            insert_txn(txn, db)
+            insert_txn(txn, db, "high_freq_txns")
 
             txn_time += timedelta(minutes=random.randint(1, 2))  # Increment time for next transaction
 
