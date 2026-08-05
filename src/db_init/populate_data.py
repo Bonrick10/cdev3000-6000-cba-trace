@@ -6,7 +6,7 @@ from pathlib import Path
 from geopy.distance import geodesic
 
 import db_init.gen_tools as gen_tools
-from db_init.txn_gen_tools.device_tools import gen_new_device_id
+from db_init.txn_gen_tools.device_tools import choose_known_device, gen_new_device_id
 from db_init.txn_gen_tools.mer_tools import generate_merchant_legitimate_amount
 from utils.db import NeonDB
 
@@ -231,22 +231,27 @@ def gen_high_freq_txns():
 
     for n in range(1000):
         print(f"Generating {n} high frequency txn out of 1000")
-        account = random.choice(accounts)
-        merchant = random.choice(merchants)
-        
-        base_amount = mer_tools.get_merchant_legitimate_amount(merchant_tags[merchant["merchant_tag"]])
-
         delta_seconds = int((END_TIME - BASE_TIME).total_seconds())
         offset = random.randint(0, delta_seconds)
 
         txn_time = BASE_TIME + timedelta(seconds=offset)
-        
+
+        account = random.choice(accounts)
+        merchant = random.choice(merchants)
+        account_txns = db.query("""
+            SELECT *
+            FROM transactions
+            WHERE sender_bsb = %(bsb)s AND sender_account_number = %(account_number)s AND transaction_time < %(txn_time)s
+            ORDER BY transaction_time DESC
+        """, {"bsb": account["bsb"], "account_number": account["account_number"], "txn_time": txn_time})
+
+        base_amount = mer_tools.get_merchant_legitimate_amount(merchant_tags[merchant["merchant_tag"]])
+
         for m in range(10):
             amount = round(random.uniform(base_amount * 0.9, base_amount * 1.1), 2)
-            lat, lon = loc_tools.gen_near_loc([], txn_time)
-            device_id = gen_new_device_id(account["entity_id"], txn_time, db)
+            lat, lon = loc_tools.gen_near_loc(account_txns)
+            device_id = choose_known_device(account["entity_id"], account_txns, txn_time, db)
 
-            if m > 1:
             txn = {
                 "sender_bsb": account["bsb"],
                 "sender_account_number": account["account_number"],
@@ -256,12 +261,14 @@ def gen_high_freq_txns():
                 "transaction_time": txn_time,
                 "sender_latitude": lat,
                 "sender_longitude": lon,
-                "predicted_label": ,
+                "predicted_label": "legitimate",
                 "true_label": "confirmed_fraudulent",
                 "merchant_tags": merchant["merchant_tag"],
                 "device_id": device_id,
             }
             insert_txn(txn, db)
+
+            txn_time += timedelta(minutes=random.randint(1, 2))  # Increment time for next transaction
 
 def gen_all_txns():
     db = NeonDB()
