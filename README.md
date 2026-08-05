@@ -81,6 +81,7 @@ psql "$DATABASE_URL" -f src/db_init/sql/migrations/001_add_rule_alert.sql
 psql "$DATABASE_URL" -f src/db_init/sql/migrations/002_transaction_decisions.sql
 psql "$DATABASE_URL" -f src/db_init/sql/migrations/003_pipeline_indexes.sql
 psql "$DATABASE_URL" -f src/db_init/sql/migrations/004_reported_fraud_support.sql
+psql "$DATABASE_URL" -f src/db_init/sql/migrations/005_split_prediction_and_truth.sql
 ```
 
 No migration runs automatically. The repository also does not reset or
@@ -126,6 +127,12 @@ window to those neighbourhoods. By default, `unusual` begins at a smoothed 5%
 report rate. `suspicious` requires a smoothed 10% report rate, an 8% Wilson lower
 bound, at least 100 accepted transactions, and at least 20 reports. Environment
 variables can override all thresholds.
+
+`MODEL_DATA_SOURCE` defaults to `full_txns` for the synthetic evaluation. Set
+`MODEL_DATA_SOURCE=transactions` in a live deployment. The live query uses
+`transactions`, `transaction_decisions`, and `corrections`; a correction to
+`confirmed_fraudulent` becomes the observable `reported_fraud` seed for the
+immediate rebuild while remaining separate from hidden/final truth.
 
 `python -m src.main evaluate` performs a read-only in-memory evaluation and
 prints a stakeholder-readable comparison of the big model, small model, and

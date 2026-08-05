@@ -7,7 +7,7 @@ from src.features import (
     build_live_features,
     is_model_eligible,
 )
-from src.features.data import SQL_DIRECTORY
+from src.features.data import SQL_DIRECTORY, read_historical_transactions
 from src.small_model.train import prepare_population
 
 
@@ -103,6 +103,26 @@ def test_model_history_uses_complete_snapshot_without_truth_leakage():
     assert "ELSE 'legitimate'" in sql
     assert "transaction_decisions" not in sql
     assert "corrections" not in sql
+
+
+def test_live_history_turns_confirmed_fraud_correction_into_observable_report():
+    sql = (SQL_DIRECTORY / "get_live_historical_transactions.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "FROM transactions AS txn" in sql
+    assert "latest_correction.new_label = 'confirmed_fraudulent'" in sql
+    assert "THEN 'reported_fraud'" in sql
+    assert "COALESCE(latest_correction.new_label, txn.true_label)::text AS label" in sql
+    assert "txn.predicted_label::text" in sql
+
+
+def test_model_data_source_is_restricted_to_known_queries():
+    try:
+        read_historical_transactions(source="unsafe_table")
+    except ValueError as error:
+        assert "Unsupported MODEL_DATA_SOURCE" in str(error)
+    else:
+        raise AssertionError("Unknown data source should be rejected.")
 
 
 def test_small_model_window_keeps_older_rows_only_as_feature_history():

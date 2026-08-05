@@ -71,9 +71,10 @@ CREATE TABLE transactions (
     transaction_time TIMESTAMPTZ NOT NULL,
     sender_latitude DECIMAL(8,6) CHECK (sender_latitude BETWEEN -90 AND 90),
     sender_longitude DECIMAL(9,6) CHECK (sender_longitude BETWEEN -180 AND 180),
-    label transaction_label NOT NULL,
+    predicted_label transaction_label,
     merchant_tags BIGINT REFERENCES merchant_tags(id),
     device_id CHAR(64) NOT NULL,
+    true_label transaction_label,
     FOREIGN KEY (sender_bsb, sender_account_number)
         REFERENCES accounts(bsb, account_number),
     FOREIGN KEY (receiver_bsb, receiver_account_number)
@@ -82,14 +83,10 @@ CREATE TABLE transactions (
 
 -- Read-only development backup maintained by the data-generation workflow.
 CREATE TABLE txns_testing (LIKE transactions INCLUDING ALL);
-ALTER TABLE txns_testing RENAME COLUMN label TO predicted_label;
-ALTER TABLE txns_testing ADD COLUMN true_label transaction_label NOT NULL;
 
 -- Canonical complete model-development snapshot. ``predicted_label`` is the
 -- observable historical status; ``true_label`` is hidden ground truth.
 CREATE TABLE full_txns (LIKE transactions INCLUDING ALL);
-ALTER TABLE full_txns RENAME COLUMN label TO predicted_label;
-ALTER TABLE full_txns ADD COLUMN true_label transaction_label NOT NULL;
 
 CREATE TABLE transaction_decisions (
     transaction_id BIGINT PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,

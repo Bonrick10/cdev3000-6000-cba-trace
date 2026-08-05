@@ -7,7 +7,7 @@ INSERT INTO transactions (
     transaction_time,
     sender_latitude,
     sender_longitude,
-    label,
+    predicted_label,
     merchant_tags,
     device_id
 ) VALUES (
@@ -19,7 +19,7 @@ INSERT INTO transactions (
     %(transaction_time)s,
     %(sender_latitude)s,
     %(sender_longitude)s,
-    %(label)s,
+    %(predicted_label)s,
     %(merchant_tags)s,
     %(device_id)s
 )

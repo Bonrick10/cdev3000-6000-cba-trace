@@ -21,7 +21,7 @@ def persist_pipeline_result(
     """Insert the attempt, evidence, and new device session atomically."""
     database = db or NeonDB()
     transaction_params = dict(transaction)
-    transaction_params["label"] = result.final.label.value
+    transaction_params["predicted_label"] = result.final.label.value
     transaction_params.setdefault("merchant_tags", None)
 
     big = result.big_model or {}
@@ -75,7 +75,7 @@ def correct_transaction(
     correction_time: Optional[datetime] = None,
     db: Optional[NeonDB] = None,
 ) -> Dict[str, Any]:
-    """Record one customer correction and update the current label atomically."""
+    """Record customer truth without overwriting the original prediction."""
     if new_label not in (Label.CONFIRMED_LEGITIMATE, Label.CONFIRMED_FRAUDULENT):
         raise ValueError("Customer corrections must be a confirmed label.")
     database = db or NeonDB()
@@ -92,7 +92,7 @@ def correct_transaction(
         )
     if not rows:
         raise ValueError(
-            f"Transaction {transaction_id} does not exist or already has label "
+            f"Transaction {transaction_id} does not exist or already has true label "
             f"{new_label.value}."
         )
     return dict(rows[0])

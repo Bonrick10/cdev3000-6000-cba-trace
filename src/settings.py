@@ -5,6 +5,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIRECTORY = Path(os.getenv("MODEL_DIRECTORY", str(PROJECT_ROOT / "models")))
+MODEL_DATA_SOURCE = os.getenv("MODEL_DATA_SOURCE", "full_txns").strip().lower()
 
 BIG_MODEL_UNUSUAL_THRESHOLD = float(os.getenv("BIG_MODEL_UNUSUAL_THRESHOLD", "0.70"))
 BIG_MODEL_SUSPICIOUS_THRESHOLD = float(

@@ -43,6 +43,8 @@ def test_pipeline_persistence_writes_attempt_evidence_and_new_device(transaction
         transaction, result, {"entity_id": 7, "device_seen_before": False}, db
     )
     assert transaction_id == 99
+    assert db.calls[0][1]["predicted_label"] == "suspicious"
+    assert "label" not in db.calls[0][1]
     assert [name for name, _ in db.calls] == [
         "insert_transaction.sql",
         "insert_decision.sql",
