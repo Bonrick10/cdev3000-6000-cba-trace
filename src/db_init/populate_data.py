@@ -197,11 +197,7 @@ def gen_sting_txns():
         merchant_tag = None
         lat, lon = vary_lat_lon(sting["latitude"], sting["longitude"])
         device_id = gen_new_device_id(seed_account["entity_id"], txn_time, db)
-        
-        if txn_time > BLINDSPOT:
-            predicted_label = "reported_fraudulent"
-        else:
-            predicted_label = "legitimate"
+
         txn = {
                 "sender_bsb": seed_account["bsb"],
                 "sender_account_number": seed_account["account_number"],
@@ -259,7 +255,11 @@ def gen_high_freq_txns():
             lat, lon = gen_near_loc(account_txns)
             device_id = choose_known_device(account["entity_id"], account_txns, txn_time, db)
 
-            if txn_time
+            if txn_time > BLINDSPOT:
+                predicted_label = "reported_fraudulent"
+            else:
+                predicted_label = "legitimate"
+                
             txn = {
                 "sender_bsb": account["bsb"],
                 "sender_account_number": account["account_number"],
