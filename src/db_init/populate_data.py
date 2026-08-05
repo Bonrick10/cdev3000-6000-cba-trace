@@ -251,6 +251,7 @@ def gen_high_freq_txns():
         base_amount = get_merchant_legitimate_amount(merchant_tags[merchant["merchant_tag"]])
 
         for m in range(10):
+            print(f"Generating {m} txn out of 10")
             amount = round(random.uniform(base_amount * 0.9, base_amount * 1.1), 2)
             lat, lon = gen_near_loc(account_txns)
             device_id = choose_known_device(account["entity_id"], account_txns, txn_time, db)
