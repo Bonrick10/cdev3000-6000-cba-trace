@@ -11,6 +11,7 @@ class Label(str, Enum):
     UNUSUAL = "unusual"
     SUSPICIOUS = "suspicious"
     CONFIRMED_FRAUDULENT = "confirmed_fraudulent"
+    REPORTED_FRAUD = "reported_fraud"
     RULE_VIOLATION = "rule_violation"
     RULE_APPROVAL = "rule_approval"
     RULE_ALERT = "rule_alert"

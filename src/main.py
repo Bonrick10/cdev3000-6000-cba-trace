@@ -7,9 +7,10 @@ import json
 from typing import Any
 
 from src.big_model.train import train_from_database as train_big_model
+from src.evaluation import evaluate_from_database, format_evaluation
 from src.new_transaction import process_transaction, read_transaction
 from src.report_transaction import report_transaction
-from src.small_model.feedback import refresh_statistics_from_database
+from src.small_model.feedback import rebuild_from_database
 from src.small_model.train import train_from_database as train_small_model
 
 
@@ -35,8 +36,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("train-big", help="train the mature supervised model")
     commands.add_parser("train-small", help="rebuild fraud-pattern clusters")
+    evaluate = commands.add_parser(
+        "evaluate", help="run a read-only integrated evaluation on hidden truth"
+    )
+    evaluate.add_argument(
+        "--json", action="store_true", help="emit machine-readable JSON"
+    )
     commands.add_parser(
-        "refresh-small", help="refresh cluster rates without rebuilding clusters"
+        "refresh-small", help="rebuild clusters from the current 60-day window"
     )
 
     report = commands.add_parser("report", help="record a confirmed customer outcome")
@@ -58,8 +65,13 @@ def main() -> None:
         output = train_big_model()["metadata"]
     elif args.command == "train-small":
         output = train_small_model()["metadata"]
+    elif args.command == "evaluate":
+        output = evaluate_from_database()
+        if not args.json:
+            print(format_evaluation(output))
+            return
     elif args.command == "refresh-small":
-        bundle = refresh_statistics_from_database()
+        bundle = rebuild_from_database()
         output = {
             "metadata": bundle["metadata"],
             "cluster_statistics": bundle["cluster_statistics"],

@@ -25,6 +25,7 @@ def _raw_rows():
                 "sender_latitude": -33.8,
                 "sender_longitude": 151.2,
                 "label": "legitimate",
+                "observed_label": "legitimate",
                 "merchant_tag": "5411",
                 "device_id": "device",
                 "rules_label": "legitimate",
@@ -41,6 +42,7 @@ def _raw_rows():
                 "sender_latitude": -33.9,
                 "sender_longitude": 151.1,
                 "label": "confirmed_fraudulent",
+                "observed_label": "reported_fraud",
                 "merchant_tag": "5411",
                 "device_id": "device",
                 "rules_label": "legitimate",
@@ -88,13 +90,19 @@ def test_blocked_attempt_does_not_update_later_history():
     assert is_model_eligible(features).tolist() == [False, True]
 
 
-def test_model_history_uses_transaction_backup_table():
+def test_model_history_uses_complete_snapshot_without_truth_leakage():
     sql = (SQL_DIRECTORY / "get_historical_transactions.sql").read_text(
         encoding="utf-8"
     )
-    assert "FROM txns_testing AS txn" in sql
+    assert "FROM full_txns AS txn" in sql
     assert "FROM transactions AS txn" not in sql
-    assert "COALESCE(latest_correction.new_label, txn.label)::text AS label" in sql
+    assert "txn.true_label::text AS label" in sql
+    assert "txn.predicted_label::text AS observed_label" in sql
+    assert "txn.predicted_label IN" in sql
+    assert "THEN txn.predicted_label::text" in sql
+    assert "ELSE 'legitimate'" in sql
+    assert "transaction_decisions" not in sql
+    assert "corrections" not in sql
 
 
 def test_small_model_window_keeps_older_rows_only_as_feature_history():

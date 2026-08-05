@@ -130,15 +130,17 @@ def choose_clusterer(
 
 
 def fit_small_model(population: pd.DataFrame) -> Dict[str, Any]:
-    """Fit preprocessing on confirmed fraud, then profile the eligible population."""
+    """Fit on observable fraud reports, then profile the eligible population."""
     missing = [name for name in MODEL_FEATURES if name not in population]
     if missing:
         raise ValueError(f"Small-model population is missing features: {missing}")
+    if "observed_label" not in population:
+        raise ValueError("Small-model population is missing observed_label metadata.")
     fraud = population[
-        population["original_label"] == Label.CONFIRMED_FRAUDULENT.value
+        population["observed_label"] == Label.REPORTED_FRAUD.value
     ].copy()
     if len(fraud) < 2:
-        raise ValueError("Small-model training requires at least two confirmed frauds.")
+        raise ValueError("Small-model training requires at least two reported frauds.")
 
     preprocessor = build_preprocessor()
     transformed_fraud = preprocessor.fit_transform(fraud[MODEL_FEATURES])
@@ -169,7 +171,7 @@ def fit_small_model(population: pd.DataFrame) -> Dict[str, Any]:
             "version": version,
             "algorithm": type(clusterer).__name__,
             "number_of_clusters": int(clusterer.n_clusters),
-            "confirmed_fraud_training_rows": int(len(fraud)),
+            "reported_fraud_training_rows": int(len(fraud)),
             "eligible_population_rows": int(len(population)),
             "silhouette_score": silhouette,
             "mean_membership_confidence": float(np.mean(confidence)),

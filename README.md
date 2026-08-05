@@ -80,6 +80,7 @@ in order. The enum migration must commit before the new value is referenced:
 psql "$DATABASE_URL" -f src/db_init/sql/migrations/001_add_rule_alert.sql
 psql "$DATABASE_URL" -f src/db_init/sql/migrations/002_transaction_decisions.sql
 psql "$DATABASE_URL" -f src/db_init/sql/migrations/003_pipeline_indexes.sql
+psql "$DATABASE_URL" -f src/db_init/sql/migrations/004_reported_fraud_support.sql
 ```
 
 No migration runs automatically. The repository also does not reset or
@@ -90,6 +91,7 @@ regenerate a remote database during model training.
 ```bash
 python -m src.main train-big
 python -m src.main train-small
+python -m src.main evaluate
 # Dry run: evaluate without inserting database rows
 python -m src.main process src/test_new_transaction.json
 # Explicitly persist the transaction and decision evidence
@@ -105,24 +107,40 @@ run still reads historical context and runs the complete rules/model pipeline,
 but it does not insert into `transactions` or `transaction_decisions`. Pass
 `--persist` only when those rows should be recorded.
 
-The big and small models read their development population from the
-`txns_testing` backup table. Live rules, insertion, corrections, and decision
-evidence continue to use `transactions`; keeping the backup synchronized is a
-data-generation responsibility. The big model retains only rows older than the
+The big and small models read their development population from the canonical
+`full_txns` snapshot. Live rules, insertion, corrections, and decision evidence
+continue to use `transactions`; keeping the snapshot synchronized is a
+data-generation responsibility. In the snapshot, `true_label` is hidden ground
+truth. It is used only as the mature big-model target and for final evaluation.
+`predicted_label` is the status observable at the time: it identifies rule exits
+and `reported_fraud` seeds. Neither column is a behavioural model feature. The
+big model retains only rows older than the
 two-calendar-month maturity cutoff, creates every row from strictly prior
-history, maps mature labels only in memory, and saves the complete preprocessing
-pipeline with `joblib`.
+history, maps mature true labels only in memory, and saves the complete
+preprocessing pipeline with `joblib`.
 
-The small model excludes all rules-bypassed attempts and uses a configurable
-rolling 60-day eligible population for clustering and fraud-rate statistics.
+The small model excludes all rules-bypassed attempts and uses the complete
+rolling 60-day eligible population. It fits fraud-pattern centroids only from
+rows whose observable status is `reported_fraud`, then assigns the rest of the
+window to those neighbourhoods. By default, `unusual` begins at a smoothed 5%
+report rate. `suspicious` requires a smoothed 10% report rate, an 8% Wilson lower
+bound, at least 100 accepted transactions, and at least 20 reports. Environment
+variables can override all thresholds.
+
+`python -m src.main evaluate` performs a read-only in-memory evaluation and
+prints a stakeholder-readable comparison of the big model, small model, and
+combined decision. Add `--json` for machine-readable output. Hidden truth is
+revealed only when calculating precision, recall, false-positive rate, and
+captured fraud value.
+
 Older rows remain available only while constructing leakage-safe prior-history
-features. Statistics refresh and retraining rebuild the window, naturally
-evicting expired population rows.
+features. Each confirmed customer fraud report triggers a complete versioned
+rebuild of the current window, naturally evicting expired population rows.
 
 It fits candidate fraud clusters using behavioural features only, assigns the
 eligible population, and applies support, fraud-count, Wilson-bound, and
 assignment-distance controls. K-Means is used for maintainable live assignment;
-MiniBatchKMeans is selected automatically for at least 50,000 confirmed fraud
+MiniBatchKMeans is selected automatically for at least 50,000 reported fraud
 rows. Cluster IDs are valid only with their stored model version.
 
 Prediction assigns a new transaction to the nearest supported fraud
@@ -130,11 +148,10 @@ neighbourhood but never mutates its centroid. The assignment and cluster
 evidence are persisted in `transaction_decisions`; centroids change only during
 a versioned rebuild.
 
-Customer corrections are recorded atomically. Cluster statistics can refresh
-immediately without changing centroids; confirmed fraud feedback also marks a
-periodic cluster rebuild as recommended.
+Customer corrections are recorded atomically. Confirmed fraud feedback then
+rebuilds both centroids and cluster statistics from the current rolling window.
 
 `transaction_decisions` is the audit record for routing and outcomes. Historical
-queries use it to identify model-routed attempts and to keep blocked attempts
-out of behavioural history. It also preserves the exact model versions and
-evidence that produced a decision.
+development routing comes from the observable `predicted_label` in `full_txns`.
+The audit table preserves the exact model versions and evidence that produced
+each persisted live decision.

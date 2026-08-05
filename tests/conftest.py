@@ -63,5 +63,6 @@ def canonical_rows(count=40):
         )
         row["rules_label"] = "legitimate"
         row["original_label"] = "confirmed_fraudulent" if index < 12 else "legitimate"
+        row["observed_label"] = "reported_fraud" if index < 12 else "legitimate"
         rows.append(row)
     return pd.DataFrame(rows)

@@ -38,10 +38,10 @@ def predict_transaction(
         "model_version": loaded["metadata"].get("version"),
         "cluster_size": int(statistic["cluster_size"]) if within else 0,
         "total_assigned_transactions": int(statistic["total_assigned_transactions"]),
-        "confirmed_fraud_count": int(statistic["confirmed_fraud_count"])
+        "reported_fraud_count": int(statistic["reported_fraud_count"])
         if within
         else 0,
-        "confirmed_fraud_percentage": float(statistic["confirmed_fraud_percentage"])
+        "reported_fraud_percentage": float(statistic["reported_fraud_percentage"])
         if within
         else 0.0,
         "smoothed_fraud_percentage": float(statistic["smoothed_fraud_percentage"])

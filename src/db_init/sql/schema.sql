@@ -4,6 +4,7 @@ CREATE TYPE transaction_label AS ENUM (
     'unusual',
     'suspicious',
     'confirmed_fraudulent',
+    'reported_fraud',
     'rule_violation',
     'rule_approval',
     'rule_alert'
@@ -81,6 +82,14 @@ CREATE TABLE transactions (
 
 -- Read-only development backup maintained by the data-generation workflow.
 CREATE TABLE txns_testing (LIKE transactions INCLUDING ALL);
+ALTER TABLE txns_testing RENAME COLUMN label TO predicted_label;
+ALTER TABLE txns_testing ADD COLUMN true_label transaction_label NOT NULL;
+
+-- Canonical complete model-development snapshot. ``predicted_label`` is the
+-- observable historical status; ``true_label`` is hidden ground truth.
+CREATE TABLE full_txns (LIKE transactions INCLUDING ALL);
+ALTER TABLE full_txns RENAME COLUMN label TO predicted_label;
+ALTER TABLE full_txns ADD COLUMN true_label transaction_label NOT NULL;
 
 CREATE TABLE transaction_decisions (
     transaction_id BIGINT PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
@@ -125,6 +134,7 @@ CREATE INDEX transactions_payee_time_idx
 CREATE INDEX transactions_device_time_idx
     ON transactions(sender_bsb, sender_account_number, device_id, transaction_time);
 CREATE INDEX txns_testing_time_idx ON txns_testing(transaction_time, id);
+CREATE INDEX full_txns_time_idx ON full_txns(transaction_time, id);
 CREATE INDEX corrections_transaction_time_idx
     ON corrections(transaction_id, correction_time);
 CREATE INDEX decisions_rules_label_idx

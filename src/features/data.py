@@ -14,7 +14,7 @@ SQL_DIRECTORY = Path(__file__).resolve().parent / "sql"
 def read_historical_transactions(
     end_time: Optional[datetime] = None, db: Optional[NeonDB] = None
 ) -> pd.DataFrame:
-    """Read model-development rows from the transaction backup table."""
+    """Read model-development rows from the canonical ``full_txns`` snapshot."""
     database = db or NeonDB()
     rows = database.query_sql_file(
         SQL_DIRECTORY / "get_historical_transactions.sql",

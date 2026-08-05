@@ -256,6 +256,7 @@ def build_historical_features(dataframe: pd.DataFrame) -> pd.DataFrame:
         "transaction_id",
         "transaction_time",
         "original_label",
+        "observed_label",
         "rules_label",
         "action",
     ]
@@ -273,6 +274,7 @@ def build_historical_features(dataframe: pd.DataFrame) -> pd.DataFrame:
         "sender_latitude",
         "sender_longitude",
         "label",
+        "observed_label",
         "merchant_tag",
         "device_id",
         "rules_label",
@@ -301,6 +303,7 @@ def build_historical_features(dataframe: pd.DataFrame) -> pd.DataFrame:
                     "transaction_id": int(row["transaction_id"]),
                     "transaction_time": normalise_timestamp(timestamp),
                     "original_label": row["label"],
+                    "observed_label": row["observed_label"],
                     "rules_label": row.get("rules_label"),
                     "action": row.get("action"),
                     **features,
