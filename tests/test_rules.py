@@ -2,8 +2,15 @@ from copy import deepcopy
 from datetime import timedelta
 
 from src.label import Label
+from src.rules.context import SQL_PATH
 from src.rules.rule_enum import RuleEnum
 from src.rules.rules import check_rules
+
+
+def test_context_query_uses_split_prediction_and_truth_schema():
+    sql = SQL_PATH.read_text(encoding="utf-8")
+    assert "txn.predicted_label IS DISTINCT FROM 'rule_violation'" in sql
+    assert "txn.label" not in sql
 
 
 def test_safe_transaction_passes_to_models(transaction, safe_context):

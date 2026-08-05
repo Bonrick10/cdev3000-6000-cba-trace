@@ -4,7 +4,7 @@ WITH completed_transactions AS (
     LEFT JOIN transaction_decisions AS decision ON decision.transaction_id = txn.id
     WHERE COALESCE(
         decision.action <> 'block',
-        txn.label IS DISTINCT FROM 'rule_violation'
+        txn.predicted_label IS DISTINCT FROM 'rule_violation'
         AND NOT EXISTS (
             SELECT 1
             FROM corrections AS correction

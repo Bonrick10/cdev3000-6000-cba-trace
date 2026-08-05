@@ -38,6 +38,23 @@ def maturity_cutoff(as_of: Optional[datetime] = None) -> pd.Timestamp:
     return current - pd.DateOffset(months=2)
 
 
+def training_reference_time(
+    raw_transactions: pd.DataFrame, as_of: Optional[datetime] = None
+) -> pd.Timestamp:
+    """Anchor static snapshots to their latest transaction, not wall-clock time."""
+    if as_of is not None:
+        reference = pd.Timestamp(as_of)
+    elif raw_transactions.empty:
+        raise ValueError("Cannot infer a training reference time from empty data.")
+    else:
+        reference = pd.to_datetime(
+            raw_transactions["transaction_time"], utc=True
+        ).max()
+    if reference.tzinfo is None:
+        return reference.tz_localize("UTC")
+    return reference.tz_convert("UTC")
+
+
 def build_model() -> Pipeline:
     """Create reusable preprocessing and logistic regression."""
     numeric = Pipeline(
@@ -165,9 +182,12 @@ def train_from_database(
     db=None,
 ) -> Dict[str, Any]:
     """Evaluate chronologically, refit on all mature rows, and save."""
-    cutoff = maturity_cutoff(as_of)
-    raw = read_historical_transactions(cutoff.to_pydatetime(), db)
-    model_data = prepare_training_data(raw)
+    raw = read_historical_transactions(db=db)
+    reference_time = training_reference_time(raw, as_of)
+    cutoff = maturity_cutoff(reference_time.to_pydatetime())
+    transaction_times = pd.to_datetime(raw["transaction_time"], utc=True)
+    mature_raw = raw[transaction_times < cutoff].copy()
+    model_data = prepare_training_data(mature_raw)
     if model_data.empty:
         raise ValueError("No mature model-eligible transactions were found.")
     train_data, test_data = chronological_split(model_data)
@@ -178,6 +198,7 @@ def train_from_database(
         final_model,
         {
             "maturity_cutoff": cutoff.isoformat(),
+            "training_as_of": reference_time.isoformat(),
             "training_rows": int(len(model_data)),
             "target_counts": {
                 str(key): int(value)

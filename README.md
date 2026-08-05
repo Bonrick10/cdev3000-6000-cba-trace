@@ -103,6 +103,24 @@ pytest
 ruff check .
 ```
 
+For a deterministic dry-run demonstration against the project Neon dataset,
+train both artifacts and run the prepared fixtures:
+
+```bash
+python -m src.main train-big
+python -m src.main train-small
+python -m src.main process demo/transactions/emerging_fraud.json
+python -m src.main process demo/transactions/rule_violation.json
+```
+
+The first fixture replays a hidden confirmed-fraud case without including its
+truth in the input. It passes the rules, receives `legitimate` from the big
+model, and is detected as `suspicious` by the small model's emerging-fraud
+neighbourhood. `model_routed.json` is a normal transaction that both models
+label legitimate. `rule_violation.json` exceeds the grocery merchant's
+suspicious range and demonstrates an immediate block. Processing remains a dry
+run unless `--persist` is explicitly supplied.
+
 Transaction processing defaults to a dry run for safe demos and testing. A dry
 run still reads historical context and runs the complete rules/model pipeline,
 but it does not insert into `transactions` or `transaction_decisions`. Pass

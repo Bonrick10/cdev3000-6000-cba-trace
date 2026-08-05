@@ -1,7 +1,7 @@
 from conftest import canonical_rows
 
 from src.big_model.predict import predict_transaction as predict_big
-from src.big_model.train import fit_model
+from src.big_model.train import fit_model, training_reference_time
 from src.features import MODEL_FEATURES
 from src.small_model.predict import predict_transaction as predict_small
 from src.small_model.statistics import risk_label, wilson_lower_bound
@@ -19,6 +19,12 @@ def test_big_model_fits_pipeline_and_returns_probability():
     assert 0 <= result["fraud_probability"] <= 1
     assert result["model_version"] == "test-big"
     assert result["predicted_label"] in {"legitimate", "unusual", "suspicious"}
+
+
+def test_static_training_snapshot_anchors_to_latest_transaction():
+    data = canonical_rows(4)
+    reference = training_reference_time(data)
+    assert reference == data["transaction_time"].max()
 
 
 def test_small_model_is_fraud_derived_and_returns_versioned_evidence():

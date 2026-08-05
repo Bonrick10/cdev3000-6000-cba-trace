@@ -320,11 +320,11 @@ def format_evaluation(results: Dict[str, Any]) -> str:
             f"fraud {combined['true_positives']:>4,} | "
             f"precision {combined['precision']:.2%} | recall {combined['recall']:.2%}"
         )
-    lines.extend(["", "EQUAL ALERT BUDGET", "-" * 18])
+    lines.extend(["", "EQUAL REVIEW BUDGET (TOP-K)", "-" * 27])
     for budget, big in results["fixed_alert_budgets"]["big_model"].items():
         combined = results["fixed_alert_budgets"]["combined"][budget]
         lines.append(
-            f"{int(budget):>5,} alerts | big {big['fraud_captured']:>4,} fraud | "
+            f"{int(budget):>5,} reviewed | big {big['fraud_captured']:>4,} fraud | "
             f"combined {combined['fraud_captured']:>4,} fraud"
         )
     return "\n".join(lines)
