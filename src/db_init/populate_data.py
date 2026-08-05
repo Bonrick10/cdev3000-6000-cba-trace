@@ -7,13 +7,14 @@ from geopy.distance import geodesic
 
 import db_init.gen_tools as gen_tools
 from db_init.txn_gen_tools.device_tools import gen_new_device_id
+from db_init.txn_gen_tools.mer_tools import generate_merchant_legitimate_amount
 from utils.db import NeonDB
 
 BASE_DIR = Path(__file__).resolve().parent
 SQL_DIR = BASE_DIR / "sql"
 SRC_DIR = BASE_DIR.parent
-# BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
-BASE_TIME = datetime(2024, 5, 22, 20, 5, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+# BASE_TIME = datetime(2024, 5, 22, 20, 5, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
 END_TIME = datetime(2024, 6, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
 
 STING_START_TIME_1 = datetime(2024, 6, 18, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
@@ -139,7 +140,6 @@ def init_sting_txns():
             """,
             sting)
     
-
 def gen_sting_txns():
     def sting_txn_time():
         # Pick which range to use
@@ -211,7 +211,57 @@ def gen_sting_txns():
             }
         insert_txn(txn, db, "sting_txns")
 
+def gen_high_freq_txns():
+    db = NeonDB()
+    accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
+    merchants = db.query("SELECT * FROM accounts WHERE is_merchant = TRUE;")
+    merchant_tags = {
+        merchant_tag["id"]: merchant_tag
+        for merchant_tag in db.query("""
+        SELECT
+            merchant_tags.id,
+            merchant_tags.merchant_category,
+            merchant_tags.suspicious_threshold_lower::numeric AS suspicious_threshold_lower,
+            merchant_tags.usual_threshold_lower::numeric AS usual_threshold_lower,
+            merchant_tags.usual_threshold_upper::numeric AS usual_threshold_upper,
+            merchant_tags.suspicious_threshold_upper::numeric AS suspicious_threshold_upper
+        FROM merchant_tags
+        """)
+    }
+
+    for n in range(1000):
+        print(f"Generating {n} high frequency txn out of 1000")
+        account = random.choice(accounts)
+        merchant = random.choice(merchants)
         
+        base_amount = mer_tools.get_merchant_legitimate_amount(merchant_tags[merchant["merchant_tag"]])
+
+        delta_seconds = int((END_TIME - BASE_TIME).total_seconds())
+        offset = random.randint(0, delta_seconds)
+
+        txn_time = BASE_TIME + timedelta(seconds=offset)
+        
+        for m in range(10):
+            amount = round(random.uniform(base_amount * 0.9, base_amount * 1.1), 2)
+            lat, lon = loc_tools.gen_near_loc([], txn_time)
+            device_id = gen_new_device_id(account["entity_id"], txn_time, db)
+
+            if m > 1:
+            txn = {
+                "sender_bsb": account["bsb"],
+                "sender_account_number": account["account_number"],
+                "receiver_bsb": merchant["bsb"],
+                "receiver_account_number": merchant["account_number"],
+                "amount": amount,
+                "transaction_time": txn_time,
+                "sender_latitude": lat,
+                "sender_longitude": lon,
+                "predicted_label": ,
+                "true_label": "confirmed_fraudulent",
+                "merchant_tags": merchant["merchant_tag"],
+                "device_id": device_id,
+            }
+            insert_txn(txn, db)
 
 def gen_all_txns():
     db = NeonDB()
