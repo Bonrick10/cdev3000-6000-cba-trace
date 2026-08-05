@@ -214,6 +214,32 @@ def gen_sting_txns():
             }
         insert_txn(txn, db, "sting_txns")
 
+def fix_sting_txns_device():
+    db = NeonDB()
+    sting_txns = db.query("SELECT * FROM sting_txns;")
+    for txn in sting_txns:
+        # Update the device_id of this transaction to a new device_id
+        account_txns = db.query("""
+            SELECT *
+            FROM transactions
+            WHERE sender_bsb = %(bsb)s AND sender_account_number = %(account_number)s AND transaction_time < %(txn_time)s
+            ORDER BY transaction_time DESC
+        """, {"bsb": txn["sender_bsb"], "account_number": txn["sender_account_number"], "txn_time": txn["transaction_time"]})
+
+        entity_id = db.query("""
+            SELECT entity_id
+            FROM accounts
+            WHERE bsb = %(bsb)s AND account_number = %(account_number)s
+            LIMIT 1;
+        """, {"bsb": txn["sender_bsb"], "account_number": txn["sender_account_number"]})[0]["entity_id"]
+        
+        new_device_id = choose_known_device(entity_id, account_txns, txn["transaction_time"], db)
+        db.execute("""
+            UPDATE sting_txns
+            SET device_id = %(new_device_id)s
+            WHERE id = %(txn_id)s;
+        """, {"new_device_id": new_device_id, "txn_id": txn["id"]})
+
 def gen_high_freq_txns():
     db = NeonDB()
     accounts = db.query("SELECT * FROM accounts WHERE is_merchant = FALSE;")
