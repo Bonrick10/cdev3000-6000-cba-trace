@@ -259,7 +259,7 @@ def gen_high_freq_txns():
                 predicted_label = "reported_fraudulent"
             else:
                 predicted_label = "legitimate"
-                
+
             txn = {
                 "sender_bsb": account["bsb"],
                 "sender_account_number": account["account_number"],
@@ -269,7 +269,7 @@ def gen_high_freq_txns():
                 "transaction_time": txn_time,
                 "sender_latitude": lat,
                 "sender_longitude": lon,
-                "predicted_label": "legitimate",
+                "predicted_label": predicted_label,
                 "true_label": "confirmed_fraudulent",
                 "merchant_tags": merchant["merchant_tag"],
                 "device_id": device_id,
