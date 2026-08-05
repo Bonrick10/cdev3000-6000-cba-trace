@@ -18,6 +18,8 @@ BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:
 # BASE_TIME = datetime(2024, 5, 22, 20, 5, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
 END_TIME = datetime(2024, 6, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
 
+BLINDSPOT = datetime(2024, 4, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
+
 STING_START_TIME_1 = datetime(2024, 6, 18, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
 STING_END_TIME_1 = datetime(2024, 6, 21, 23, 59, 59, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
 STING_START_TIME_2 = datetime(2024, 6, 25, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
@@ -196,6 +198,10 @@ def gen_sting_txns():
         lat, lon = vary_lat_lon(sting["latitude"], sting["longitude"])
         device_id = gen_new_device_id(seed_account["entity_id"], txn_time, db)
         
+        if txn_time > BLINDSPOT:
+            predicted_label = "reported_fraudulent"
+        else:
+            predicted_label = "legitimate"
         txn = {
                 "sender_bsb": seed_account["bsb"],
                 "sender_account_number": seed_account["account_number"],
@@ -205,7 +211,7 @@ def gen_sting_txns():
                 "transaction_time": txn_time,
                 "sender_latitude": lat,
                 "sender_longitude": lon,
-                "predicted_label": "legitimate",
+                "predicted_label": predicted_label,
                 "true_label": "confirmed_fraudulent",
                 "merchant_tags": merchant_tag,
                 "device_id": device_id,
@@ -253,6 +259,7 @@ def gen_high_freq_txns():
             lat, lon = gen_near_loc(account_txns)
             device_id = choose_known_device(account["entity_id"], account_txns, txn_time, db)
 
+            if txn_time
             txn = {
                 "sender_bsb": account["bsb"],
                 "sender_account_number": account["account_number"],
