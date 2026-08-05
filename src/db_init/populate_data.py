@@ -256,7 +256,7 @@ def gen_high_freq_txns():
             device_id = choose_known_device(account["entity_id"], account_txns, txn_time, db)
 
             if txn_time > BLINDSPOT:
-                predicted_label = "reported_fraudulent"
+                predicted_label = "reported_fraud"
             else:
                 predicted_label = "legitimate"
 
