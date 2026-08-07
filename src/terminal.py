@@ -93,13 +93,9 @@ def format_pipeline_result(
     if big:
         unusual = big.get("unusual_threshold")
         suspicious = big.get("suspicious_threshold")
-        unusual_text = (
-            _percentage(float(unusual) * 100) if unusual is not None else "—"
-        )
+        unusual_text = _percentage(float(unusual) * 100) if unusual is not None else "—"
         suspicious_text = (
-            _percentage(float(suspicious) * 100)
-            if suspicious is not None
-            else "—"
+            _percentage(float(suspicious) * 100) if suspicious is not None else "—"
         )
         lines.extend(
             [
@@ -123,9 +119,7 @@ def format_pipeline_result(
         )
         confidence = small.get("membership_confidence")
         confidence_text = (
-            _percentage(float(confidence) * 100)
-            if confidence is not None
-            else "—"
+            _percentage(float(confidence) * 100) if confidence is not None else "—"
         )
         lines.extend(
             [

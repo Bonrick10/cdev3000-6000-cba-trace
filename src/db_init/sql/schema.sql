@@ -28,11 +28,13 @@ CREATE TABLE accounts (
     entity_id BIGINT REFERENCES entities(id) NOT NULL,
     account_name VARCHAR(64),
     funds MONEY NOT NULL CHECK (funds >= 0.0::MONEY) DEFAULT 0.0::MONEY,
+    is_merchant BOOLEAN NOT NULL DEFAULT FALSE,
+    merchant_tag BIGINT REFERENCES merchant_tags(id),
     PRIMARY KEY (bsb, account_number)
 );
 
 CREATE TABLE merchant_tags (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT PRIMARY KEY,
     merchant_category VARCHAR(64) NOT NULL,
     suspicious_threshold_lower MONEY NOT NULL CHECK (
         suspicious_threshold_lower >= 0.0::MONEY

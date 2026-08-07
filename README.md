@@ -54,6 +54,23 @@ fewer than five prior transactions or less than 15 days of history. Those
 signals do not have a meaningful baseline for a genuinely fresh account;
 merchant limits still apply.
 
+## Other Scenarios
+
+Fraud cases that pass through the rules and do not trigger any alerts and violations.
+Majority of these will be legitimate. The two fraudulent cases are:
+
+- Credit card stolen: Making payments to one account at least 5 times within one hour
+  - Intended to be caught by big model, occurs throughout timeline environment
+  - If older than 60 days: `reported fraud`
+  - Else: `legitimate`
+  - Note: This is intended to be caught by the big model
+
+- Buy and Sell: New customer account emerges and receives money multiple accounts
+  - Intended to be caught by small model, occurs within 60 day blindspot period
+  - 20% of cases: `reported fraud`
+  - 80% of cases: `legitimate`
+  - Note: This is intended to be the emerging trend missed by the big model and caught by the small model
+
 ## Prerequisites
 
 - Python 3.11 or later
@@ -121,6 +138,9 @@ regenerate a remote database during model training.
 ## Commands
 
 ```bash
+# Generate data
+python src/db_init/generator.py
+
 # Train and save model artifacts
 python -m src.main train-big
 python -m src.main train-small

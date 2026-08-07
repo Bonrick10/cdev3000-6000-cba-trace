@@ -22,26 +22,6 @@ SELECT
     date '1950-01-01' + (random() * (date '2000-12-31' - date '1950-01-01'))::int AS date_of_birth
 FROM generate_series(1, 50) AS sequence;
 
-INSERT INTO accounts (bsb, account_number, entity_id, funds)
-SELECT
-    branch.bsb,
-    (100000000 + (sequence * 7919) % 900000000) AS account_number,
-    entity.id,
-    (random() * 10000)::numeric(10,2) AS funds
-FROM generate_series(1, 500) AS sequence
-CROSS JOIN LATERAL (
-    SELECT bsb
-    FROM branches
-    ORDER BY random() + sequence  -- forces correlation
-    LIMIT 1
-) AS branch
-CROSS JOIN LATERAL (
-    SELECT id
-    FROM entities
-    ORDER BY random() + sequence  -- forces correlation
-    LIMIT 1
-) AS entity;
-
 INSERT INTO merchant_tags (
     id,
     merchant_category,
@@ -51,7 +31,7 @@ INSERT INTO merchant_tags (
     suspicious_threshold_upper
 )
 VALUES
-(5411, 'Groceries',                 1.00,      5.00,      250.00,     1000.00),
+(5411, 'Groceries',                 1.00,     10.00,      250.00,     1000.00),
 (5541, 'Fuel Station',              3.00,     20.00,      180.00,      500.00),
 (5812, 'Restaurant',                2.00,     10.00,      200.00,      750.00),
 (5814, 'Fast Food',                 1.00,      5.00,       40.00,      200.00),
@@ -92,22 +72,56 @@ VALUES
 (7372, 'Digital Services',          1.00,      5.00,      200.00,     1000.00),
 (6051, 'Cryptocurrency Exchange',  10.00,     50.00,     5000.00,    10000.00);
 
+-- INSERT INTO device_sessions (id, entity_id, device_id, session_start_time, session_end_time)
+-- SELECT
+--     (g * 7919) % 90000 + 100000 AS id,
+--     e.id AS entity_id,
+--     MD5(g::text) AS device_id,
+--     s.session_start_time,
+--     CASE
+--         WHEN random() < 0.3 THEN NULL
+--         ELSE s.session_start_time + (random() * interval '4 hours')
+--     END AS session_end_time
+-- FROM generate_series(1, 100) g
+-- CROSS JOIN LATERAL (
+--     SELECT id
+--     FROM entities
+--     ORDER BY random() + g
+--     LIMIT 1
+-- ) e
+-- CROSS JOIN LATERAL (
+--     SELECT
+--         '2023-01-01 00:00:00'::timestamp
+--         + (random() * extract(epoch FROM ('2026-06-30 23:59:59'::timestamp - '2023-01-01 00:00:00'::timestamp))) 
+--         * interval '1 second'
+--         AS session_start_time
+-- ) s;
 
-INSERT INTO device_sessions (id, entity_id, device_id, session_start_time, session_end_time)
+INSERT INTO accounts (bsb, account_number, entity_id, funds, is_merchant, merchant_tag)
 SELECT
-    (sequence * 7919) % 90000 + 100000,
-    entity.id AS entity_id,
-    MD5(sequence::text) AS device_id,
-    NOW() - (random() * interval '365 days') AS session_start_time,
-    (CASE
-    WHEN random() < 0.3 THEN NULL
-    ELSE (NOW() - (random() * interval '365 days'))
-         + (random() * interval '4 hours')
-    END) AS session_end_time
-FROM generate_series(1, 100) AS sequence
+    b.bsb,
+    (100000000 + (g * 7919) % 900000000) AS account_number,
+    e.id,
+    (random() * 10000)::numeric(10,2) AS funds,
+    CASE WHEN g <= 400 THEN FALSE ELSE TRUE END AS is_merchant,
+    CASE WHEN g > 400 THEN m.id END AS merchant_tag
+FROM generate_series(1, 500) g
+CROSS JOIN LATERAL (
+    SELECT bsb
+    FROM branches
+    ORDER BY random() + g
+    LIMIT 1
+) b
 CROSS JOIN LATERAL (
     SELECT id
     FROM entities
-    ORDER BY random() + sequence  -- forces correlation
+    ORDER BY random() + g
     LIMIT 1
-) AS entity;
+) e
+CROSS JOIN LATERAL (
+    SELECT id
+    FROM merchant_tags
+    ORDER BY random() + g
+    LIMIT 1
+) m
+;

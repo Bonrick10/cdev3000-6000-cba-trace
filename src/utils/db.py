@@ -22,14 +22,18 @@ class NeonDB:
         Initialize the NeonDB instance and load the database URL.
         """
 
+
+class NeonDB:
+    """Wrapper for connecting to Neon/Postgres using psycopg2."""
+
+    def __init__(self, db_url=None):
+        """Initialize the NeonDB instance and load the database URL."""
         self.db_url = db_url or os.getenv("DATABASE_URL")
         if not self.db_url:
             raise ValueError("DATABASE_URL environment variable is not set.")
 
     def connect(self):
-        """
-        Connects to the Neon/Postgres database.
-        """
+        """Connects to the Neon/Postgres database."""
         return psycopg2.connect(self.db_url, cursor_factory=RealDictCursor)
 
     @staticmethod
