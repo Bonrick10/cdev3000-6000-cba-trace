@@ -3,11 +3,14 @@ import random
 
 def choose_new_payee(seed_acc_txns, merchants, merchant_tags):
     past_merchant_txns = [
-        transaction for transaction in seed_acc_txns if transaction["merchant_tags"] is not None
+        transaction
+        for transaction in seed_acc_txns
+        if transaction["merchant_tags"] is not None
     ]
 
     merchant_keys = {
-        (txn["receiver_bsb"], txn["receiver_account_number"]) for txn in past_merchant_txns
+        (txn["receiver_bsb"], txn["receiver_account_number"])
+        for txn in past_merchant_txns
     }
 
     unknown_merchants = [
@@ -40,7 +43,9 @@ def choose_any_merchant_receiver(merchants, merchant_tags):
 
 def choose_known_merchant_receiver(seed_acc_txns, merchants, merchant_tags):
     past_merchant_txns = [
-        transaction for transaction in seed_acc_txns if transaction["merchant_tags"] is not None
+        transaction
+        for transaction in seed_acc_txns
+        if transaction["merchant_tags"] is not None
     ]
 
     if len(past_merchant_txns) == 0:
@@ -48,7 +53,8 @@ def choose_known_merchant_receiver(seed_acc_txns, merchants, merchant_tags):
         return choose_any_merchant_receiver(merchants, merchant_tags)
 
     merchant_keys = {
-        (txn["receiver_bsb"], txn["receiver_account_number"]) for txn in past_merchant_txns
+        (txn["receiver_bsb"], txn["receiver_account_number"])
+        for txn in past_merchant_txns
     }
 
     known_merchants = [

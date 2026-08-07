@@ -113,9 +113,7 @@ def evaluate_from_database(db=None) -> Dict[str, Any]:
 
     window = prepare_population(raw, as_of.to_pydatetime())
     small_bundle = fit_small_model(window)
-    evaluation = window[
-        window["observed_label"] != Label.REPORTED_FRAUD.value
-    ].copy()
+    evaluation = window[window["observed_label"] != Label.REPORTED_FRAUD.value].copy()
     evaluation["target"] = (
         evaluation["original_label"] == Label.CONFIRMED_FRAUDULENT.value
     ).astype(int)
@@ -140,8 +138,7 @@ def evaluate_from_database(db=None) -> Dict[str, Any]:
     combined_labels = _worst_labels(big_labels, small_labels)
     amounts = evaluation["amount"].to_numpy(dtype=float)
     statistic_by_cluster = {
-        int(item["cluster_id"]): item
-        for item in small_bundle["cluster_statistics"]
+        int(item["cluster_id"]): item for item in small_bundle["cluster_statistics"]
     }
     small_report_scores = np.asarray(
         [
@@ -207,10 +204,7 @@ def evaluate_from_database(db=None) -> Dict[str, Any]:
             rate = float(statistic["smoothed_fraud_percentage"]) / 100
             lower = float(statistic["fraud_rate_lower_bound"]) / 100
             suspicious = (
-                within
-                and supported
-                and rate >= threshold
-                and lower >= threshold * 0.8
+                within and supported and rate >= threshold and lower >= threshold * 0.8
             )
             threshold_labels.append(
                 Label.SUSPICIOUS.value if suspicious else Label.LEGITIMATE.value
@@ -234,16 +228,11 @@ def evaluate_from_database(db=None) -> Dict[str, Any]:
     )
     combined_budget_score = np.maximum(
         big_budget_score,
-        np.asarray([SEVERITY[label] for label in small_labels])
-        + small_report_scores,
+        np.asarray([SEVERITY[label] for label in small_labels]) + small_report_scores,
     )
     results["fixed_alert_budgets"] = {
-        "big_model": _fixed_budget_metrics(
-            target, amounts, big_budget_score
-        ),
-        "combined": _fixed_budget_metrics(
-            target, amounts, combined_budget_score
-        ),
+        "big_model": _fixed_budget_metrics(target, amounts, big_budget_score),
+        "combined": _fixed_budget_metrics(target, amounts, combined_budget_score),
         "ranking_note": (
             "Severity is ranked first, then big-model probability; small-model "
             "report concentration breaks combined-model risk ties."

@@ -47,9 +47,7 @@ def training_reference_time(
     elif raw_transactions.empty:
         raise ValueError("Cannot infer a training reference time from empty data.")
     else:
-        reference = pd.to_datetime(
-            raw_transactions["transaction_time"], utc=True
-        ).max()
+        reference = pd.to_datetime(raw_transactions["transaction_time"], utc=True).max()
     if reference.tzinfo is None:
         return reference.tz_localize("UTC")
     return reference.tz_convert("UTC")

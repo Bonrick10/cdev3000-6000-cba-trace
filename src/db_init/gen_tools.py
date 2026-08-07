@@ -29,8 +29,7 @@ LABELS = [
 
 
 def gen_timeline(base_time, end_time):
-    """Generates timeline array spaced evenly with noise.
-    """
+    """Generates timeline array spaced evenly with noise."""
     step = timedelta(minutes=5)
     # step = timedelta(hours=2)
     # step = timedelta(hours=12)
@@ -71,12 +70,15 @@ def gen_subscripts(accounts, merchants, merchant_tags, db):
             else:
                 is_noisy = False
 
-            
             if random.random() < 0.7:
                 # 70% chance of merchant subscription
                 merchant = random.choice(merchants)
-                merchant_data = mer_tools.get_merchant_data(merchant["merchant_tag"], merchant_tags)
-                legitimate_amount = mer_tools.get_merchant_legitimate_amount(merchant_data)
+                merchant_data = mer_tools.get_merchant_data(
+                    merchant["merchant_tag"], merchant_tags
+                )
+                legitimate_amount = mer_tools.get_merchant_legitimate_amount(
+                    merchant_data
+                )
                 subs_bsb = merchant["bsb"]
                 subs_account_number = merchant["account_number"]
                 db.execute(
@@ -84,12 +86,16 @@ def gen_subscripts(accounts, merchants, merchant_tags, db):
                     INSERT INTO subscriptions (account_bsb, account_number, subs_bsb, subs_account_number, is_noisy)
                     VALUES (%(bsb)s, %(account_number)s, TRUE)
                     """,
-                    {"bsb": account["bsb"], "account_number": account["account_number"]},
+                    {
+                        "bsb": account["bsb"],
+                        "account_number": account["account_number"],
+                    },
                 )
 
+
 def gen_rule_approved_txn():
-    """Generate 78% of txns that get rule approved
-    """
+    """Generate 78% of txns that get rule approved"""
+
 
 def gen_txn(
     seed_account,
@@ -101,8 +107,7 @@ def gen_txn(
     new_txn_time,
     db,
 ):
-    """Generate a transaction based on the seed account and its history.
-    """
+    """Generate a transaction based on the seed account and its history."""
     r = random.random()
 
     if r < SUSPICIOUS_TXN_RATE:
@@ -173,7 +178,9 @@ def gen_legit_txn(
                 )
             )
         else:
-            receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(accounts)
+            receiver_bsb, receiver_acc, amount = p2p_tools.choose_any_p2p_receiver(
+                accounts
+            )
             merchant_tag = None
 
         lat, lon = loc_tools.gen_rand_loc()
@@ -197,7 +204,9 @@ def gen_legit_txn(
             merchant_tag = None
         lat, lon = loc_tools.gen_near_loc(seed_acc_txns)
         entity_id = seed_account["entity_id"]
-        device_id = device_tools.choose_known_device(entity_id, seed_acc_txns, new_txn_time, db)
+        device_id = device_tools.choose_known_device(
+            entity_id, seed_acc_txns, new_txn_time, db
+        )
 
     if random.random() < 0.02:
         true_label = LABELS[4]
@@ -275,7 +284,9 @@ def gen_unusual_txn(
         device_id = device_tools.gen_new_device_id(entity_id, new_txn_time, db)
     else:
         entity_id = seed_account["entity_id"]
-        device_id = device_tools.choose_known_device(entity_id, seed_acc_txns, new_txn_time, db)
+        device_id = device_tools.choose_known_device(
+            entity_id, seed_acc_txns, new_txn_time, db
+        )
 
     return [
         {
@@ -341,7 +352,9 @@ def gen_sus_txn(
 
         # force extreme amount
         if merchant_tag is not None and random.random() > 0.5:
-            min_amt, _, _, max_amt = mer_tools.get_merchant_data(merchant_tag, merchant_tags)
+            min_amt, _, _, max_amt = mer_tools.get_merchant_data(
+                merchant_tag, merchant_tags
+            )
             if random.random() > 0.5:
                 amount = round(random.uniform(min_amt * 0.5, min_amt), 2)
             else:
@@ -353,7 +366,9 @@ def gen_sus_txn(
             device_id = device_tools.gen_new_device_id(entity_id, new_txn_time, db)
         else:
             entity_id = seed_account["entity_id"]
-            device_id = device_tools.choose_known_device(entity_id, seed_acc_txns, new_txn_time, db)
+            device_id = device_tools.choose_known_device(
+                entity_id, seed_acc_txns, new_txn_time, db
+            )
 
         lat, lon = loc_tools.gen_near_loc(seed_acc_txns)
 
@@ -434,7 +449,9 @@ def gen_impossible_travel_txn(
         )
 
     second_txn = second_txn_list[0]
-    lat, lon = loc_tools.gen_far_loc(first_txn["sender_latitude"], first_txn["sender_longitude"])
+    lat, lon = loc_tools.gen_far_loc(
+        first_txn["sender_latitude"], first_txn["sender_longitude"]
+    )
 
     second_txn = {
         "sender_bsb": seed_account["bsb"],

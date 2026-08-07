@@ -44,6 +44,8 @@ def gen_near_loc(seed_acc_txns):
 def gen_far_loc(lat, lon):
     center = Point(lat, lon)
     random_bearing = random.random() * 360
-    distance_km = random.uniform(IMPOSSIBLE_TRAVEL_THRESHOLD, IMPOSSIBLE_TRAVEL_THRESHOLD * 1.5)
+    distance_km = random.uniform(
+        IMPOSSIBLE_TRAVEL_THRESHOLD, IMPOSSIBLE_TRAVEL_THRESHOLD * 1.5
+    )
     point = geodesic(kilometers=distance_km).destination(center, random_bearing)
     return (point.latitude, point.longitude)

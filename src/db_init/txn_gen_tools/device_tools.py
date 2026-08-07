@@ -3,7 +3,9 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 SESSION_DURATION = timedelta(hours=1)
-END_TIME = datetime(2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
+END_TIME = datetime(
+    2026, 6, 30, 23, 59, 59, tzinfo=timezone.utc
+)  # 2026-06-30 23:59:59+00
 
 
 def gen_new_device_id(entity_id, timestamp, db) -> str:
@@ -45,8 +47,7 @@ def choose_known_device(entity_id, seed_acc_txns, timestamp, db):
 
 
 def gen_device_session(device_id, session_start_time, entity_id, db):
-    """Generate a device session for a given device ID and session_start_time.
-    """
+    """Generate a device session for a given device ID and session_start_time."""
     # This emulates a logout
     noisy_session_duration = SESSION_DURATION + timedelta(minutes=random.randint(-5, 5))
     session_end_time = session_start_time + noisy_session_duration

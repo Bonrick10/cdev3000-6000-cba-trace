@@ -16,30 +16,76 @@ SQL_DIR = BASE_DIR / "sql"
 SRC_DIR = BASE_DIR.parent
 BASE_TIME = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
 # BASE_TIME = datetime(2024, 5, 22, 20, 5, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
-END_TIME = datetime(2024, 6, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
+END_TIME = datetime(
+    2024, 6, 30, 23, 59, 59, tzinfo=timezone.utc
+)  # 2026-06-30 23:59:59+00
 
-BLINDSPOT = datetime(2024, 4, 30, 23, 59, 59, tzinfo=timezone.utc)  # 2026-06-30 23:59:59+00
+BLINDSPOT = datetime(
+    2024, 4, 30, 23, 59, 59, tzinfo=timezone.utc
+)  # 2026-06-30 23:59:59+00
 
-STING_START_TIME_1 = datetime(2024, 6, 18, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
-STING_END_TIME_1 = datetime(2024, 6, 21, 23, 59, 59, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
-STING_START_TIME_2 = datetime(2024, 6, 25, 0, 0, 0, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
-STING_END_TIME_2 = datetime(2024, 6, 28, 23, 59, 59, tzinfo=timezone.utc)  # 2023-01-01 00:00:00+00
+STING_START_TIME_1 = datetime(
+    2024, 6, 18, 0, 0, 0, tzinfo=timezone.utc
+)  # 2023-01-01 00:00:00+00
+STING_END_TIME_1 = datetime(
+    2024, 6, 21, 23, 59, 59, tzinfo=timezone.utc
+)  # 2023-01-01 00:00:00+00
+STING_START_TIME_2 = datetime(
+    2024, 6, 25, 0, 0, 0, tzinfo=timezone.utc
+)  # 2023-01-01 00:00:00+00
+STING_END_TIME_2 = datetime(
+    2024, 6, 28, 23, 59, 59, tzinfo=timezone.utc
+)  # 2023-01-01 00:00:00+00
 
-GIVEN_NAMES = ['John','Jane','Michael','Emily','David','Sarah','James','Olivia',
-    'William','Emma','Benjamin','Ava','Lucas','Sophia','Mason','Isabella',
-    'Ethan','Mia','Alexander','Charlotte']
-SURNAMES = ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller',
-    'Davis','Rodriguez','Martinez','Hernandez','Lopez','Gonzalez',
-    'Wilson','Anderson']
-    
+GIVEN_NAMES = [
+    "John",
+    "Jane",
+    "Michael",
+    "Emily",
+    "David",
+    "Sarah",
+    "James",
+    "Olivia",
+    "William",
+    "Emma",
+    "Benjamin",
+    "Ava",
+    "Lucas",
+    "Sophia",
+    "Mason",
+    "Isabella",
+    "Ethan",
+    "Mia",
+    "Alexander",
+    "Charlotte",
+]
+SURNAMES = [
+    "Smith",
+    "Johnson",
+    "Williams",
+    "Brown",
+    "Jones",
+    "Garcia",
+    "Miller",
+    "Davis",
+    "Rodriguez",
+    "Martinez",
+    "Hernandez",
+    "Lopez",
+    "Gonzalez",
+    "Wilson",
+    "Anderson",
+]
+
+
 def generate_seed_data():
-    """Populates the database with synthetic data.
-    """
+    """Populates the database with synthetic data."""
     db = NeonDB()
     print("Resetting database")
     db.execute(db.read_sql_file(SQL_DIR / "clear_all_tables.sql"))
     print("Generating data")
     db.execute(db.read_sql_file(SQL_DIR / "synthetic_population.sql"))
+
 
 def init_sting_txns():
     # Create 5 new accounts and entities and store them in a sting table
@@ -51,11 +97,11 @@ def init_sting_txns():
         delta_days = (end - start).days
         offset = random.randint(0, delta_days)
         return start + timedelta(days=offset)
-    
+
     db = NeonDB()
-    
+
     branches = db.query("SELECT * FROM branches")
-    
+
     acc_counter = 501
     ent_counter = 51
     for _ in range(5):
@@ -69,7 +115,7 @@ def init_sting_txns():
 
         account_number = (acc_counter * 7919) % 900000000 + 100000000
         entity_id = (ent_counter * 7919) % 90000 + 100000
-        
+
         lat = random.uniform(-90, 90)
         lon = random.uniform(-180, 180)
 
@@ -83,24 +129,25 @@ def init_sting_txns():
             "id": entity_id,
             "given_name": given_name,
             "surname": surname,
-            "date_of_birth": dob
+            "date_of_birth": dob,
         }
 
         account = {
             "bsb": bsb,
             "account_number": account_number,
             "funds": funds,
-            "entity_id": entity_id
+            "entity_id": entity_id,
         }
 
         sting = {
             "bsb": bsb,
             "account_number": account_number,
             "latitude": lat,
-            "longitude": lon
+            "longitude": lon,
         }
 
-        db.execute("""
+        db.execute(
+            """
             INSERT INTO entities (
                 id,
                 given_name,
@@ -112,9 +159,12 @@ def init_sting_txns():
                 %(surname)s,
                 %(date_of_birth)s                                                             
             );
-            """, entity)
+            """,
+            entity,
+        )
 
-        db.execute("""
+        db.execute(
+            """
             INSERT INTO accounts (
                 bsb,
                 account_number,
@@ -127,9 +177,11 @@ def init_sting_txns():
                 %(entity_id)s
             );
             """,
-            account)
+            account,
+        )
 
-        db.execute("""INSERT INTO stings (
+        db.execute(
+            """INSERT INTO stings (
                 bsb,
                 account_number,
                 latitude,
@@ -141,15 +193,19 @@ def init_sting_txns():
                 %(longitude)s   
             );
             """,
-            sting)
-    
+            sting,
+        )
+
+
 def gen_sting_txns():
     def sting_txn_time():
         # Pick which range to use
-        start, end = random.choice([
-            (STING_START_TIME_1, STING_END_TIME_1),
-            (STING_START_TIME_2, STING_END_TIME_2)
-        ])
+        start, end = random.choice(
+            [
+                (STING_START_TIME_1, STING_END_TIME_1),
+                (STING_START_TIME_2, STING_END_TIME_2),
+            ]
+        )
 
         # Compute total seconds in the chosen range
         delta_seconds = int((end - start).total_seconds())
@@ -158,7 +214,7 @@ def gen_sting_txns():
         offset = random.randint(0, delta_seconds)
 
         return start + timedelta(seconds=offset)
-    
+
     def vary_lat_lon(lat, lon):
         radius_km = 1
         # Pick a random bearing (0–360 degrees)
@@ -173,7 +229,7 @@ def gen_sting_txns():
         return round(new_point.latitude, 6), round(new_point.longitude, 6)
 
     db = NeonDB()
-    
+
     accounts = db.query("""SELECT *
         FROM accounts a
         WHERE a.is_merchant = FALSE
@@ -188,7 +244,7 @@ def gen_sting_txns():
 
     for n in range(1000):
         print(f"Generating {n} sting txn out of 1000")
-        txn_time = sting_txn_time() 
+        txn_time = sting_txn_time()
         seed_account = random.choice(accounts)
         sting = random.choice(stings)
 
@@ -199,46 +255,63 @@ def gen_sting_txns():
         device_id = gen_new_device_id(seed_account["entity_id"], txn_time, db)
 
         txn = {
-                "sender_bsb": seed_account["bsb"],
-                "sender_account_number": seed_account["account_number"],
-                "receiver_bsb": sting["bsb"],
-                "receiver_account_number": sting["account_number"],
-                "amount": amount,
-                "transaction_time": txn_time,
-                "sender_latitude": lat,
-                "sender_longitude": lon,
-                "predicted_label": predicted_label,
-                "true_label": "confirmed_fraudulent",
-                "merchant_tags": merchant_tag,
-                "device_id": device_id,
-            }
+            "sender_bsb": seed_account["bsb"],
+            "sender_account_number": seed_account["account_number"],
+            "receiver_bsb": sting["bsb"],
+            "receiver_account_number": sting["account_number"],
+            "amount": amount,
+            "transaction_time": txn_time,
+            "sender_latitude": lat,
+            "sender_longitude": lon,
+            "predicted_label": predicted_label,
+            "true_label": "confirmed_fraudulent",
+            "merchant_tags": merchant_tag,
+            "device_id": device_id,
+        }
         insert_txn(txn, db, "sting_txns")
+
 
 def fix_sting_txns_device():
     db = NeonDB()
     sting_txns = db.query("SELECT * FROM sting_txns;")
     for txn in sting_txns:
         # Update the device_id of this transaction to a new device_id
-        account_txns = db.query("""
+        account_txns = db.query(
+            """
             SELECT *
             FROM transactions
             WHERE sender_bsb = %(bsb)s AND sender_account_number = %(account_number)s AND transaction_time < %(txn_time)s
             ORDER BY transaction_time DESC
-        """, {"bsb": txn["sender_bsb"], "account_number": txn["sender_account_number"], "txn_time": txn["transaction_time"]})
+        """,
+            {
+                "bsb": txn["sender_bsb"],
+                "account_number": txn["sender_account_number"],
+                "txn_time": txn["transaction_time"],
+            },
+        )
 
-        entity_id = db.query("""
+        entity_id = db.query(
+            """
             SELECT entity_id
             FROM accounts
             WHERE bsb = %(bsb)s AND account_number = %(account_number)s
             LIMIT 1;
-        """, {"bsb": txn["sender_bsb"], "account_number": txn["sender_account_number"]})[0]["entity_id"]
-        
-        new_device_id = choose_known_device(entity_id, account_txns, txn["transaction_time"], db)
-        db.execute("""
+        """,
+            {"bsb": txn["sender_bsb"], "account_number": txn["sender_account_number"]},
+        )[0]["entity_id"]
+
+        new_device_id = choose_known_device(
+            entity_id, account_txns, txn["transaction_time"], db
+        )
+        db.execute(
+            """
             UPDATE sting_txns
             SET device_id = %(new_device_id)s
             WHERE id = %(txn_id)s;
-        """, {"new_device_id": new_device_id, "txn_id": txn["id"]})
+        """,
+            {"new_device_id": new_device_id, "txn_id": txn["id"]},
+        )
+
 
 def gen_high_freq_txns():
     db = NeonDB()
@@ -267,20 +340,31 @@ def gen_high_freq_txns():
 
         account = random.choice(accounts)
         merchant = random.choice(merchants)
-        account_txns = db.query("""
+        account_txns = db.query(
+            """
             SELECT *
             FROM transactions
             WHERE sender_bsb = %(bsb)s AND sender_account_number = %(account_number)s AND transaction_time < %(txn_time)s
             ORDER BY transaction_time DESC
-        """, {"bsb": account["bsb"], "account_number": account["account_number"], "txn_time": txn_time})
+        """,
+            {
+                "bsb": account["bsb"],
+                "account_number": account["account_number"],
+                "txn_time": txn_time,
+            },
+        )
 
-        base_amount = get_merchant_legitimate_amount(merchant_tags[merchant["merchant_tag"]])
+        base_amount = get_merchant_legitimate_amount(
+            merchant_tags[merchant["merchant_tag"]]
+        )
 
         for m in range(10):
             print(f"Generating {m} txn out of 10")
             amount = round(random.uniform(base_amount * 0.9, base_amount * 1.1), 2)
             lat, lon = gen_near_loc(account_txns)
-            device_id = choose_known_device(account["entity_id"], account_txns, txn_time, db)
+            device_id = choose_known_device(
+                account["entity_id"], account_txns, txn_time, db
+            )
 
             if txn_time > BLINDSPOT:
                 predicted_label = "reported_fraud"
@@ -303,7 +387,10 @@ def gen_high_freq_txns():
             }
             insert_txn(txn, db, "high_freq_txns")
 
-            txn_time += timedelta(minutes=random.randint(1, 2))  # Increment time for next transaction
+            txn_time += timedelta(
+                minutes=random.randint(1, 2)
+            )  # Increment time for next transaction
+
 
 def gen_all_txns():
     db = NeonDB()
@@ -333,14 +420,18 @@ def gen_all_txns():
 
     # Key is tuple of (bsb, account_number) value is arr of transaction dicts
     # (should be ascending time ordered since insert in order of timeline)
-    account_txns = {(account["bsb"], account["account_number"]): [] for account in accounts}
+    account_txns = {
+        (account["bsb"], account["account_number"]): [] for account in accounts
+    }
 
     timeline = gen_tools.gen_timeline(BASE_TIME, END_TIME)
 
     print("Generating Transaction Data")
     for index, new_txn_time in enumerate(timeline):
         seed_account = random.choice(accounts)
-        seed_acc_txns = account_txns[(seed_account["bsb"], seed_account["account_number"])]
+        seed_acc_txns = account_txns[
+            (seed_account["bsb"], seed_account["account_number"])
+        ]
 
         print(f"\rGenerating Transaction {index} of {len(timeline)}")
         new_txns = gen_tools.gen_txn(
@@ -354,7 +445,9 @@ def gen_all_txns():
             db,
         )
         for new_txn in new_txns:
-            account_txns[(seed_account["bsb"], seed_account["account_number"])].append(new_txn)
+            account_txns[(seed_account["bsb"], seed_account["account_number"])].append(
+                new_txn
+            )
             insert_txn(new_txn, db)
 
 
