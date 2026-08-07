@@ -60,9 +60,12 @@ Fraud cases that pass through the rules and do not trigger any alerts and violat
 Majority of these will be legitimate. The two fraudulent cases are:
 
 - Credit card stolen: Making payments to one account at least 5 times within one hour
+  - Intended to be caught by big model, occurs throughout timeline environment
   - If older than 60 days: `reported fraud`
   - Else: `legitimate`
+
 - Buy and Sell: New customer account emerges and receives money multiple accounts
+  - Intended to be caught by small model, occurs within 60 day blindspot period
   - 20% of cases: `reported fraud`
   - 80% of cases: `legitimate`
 
