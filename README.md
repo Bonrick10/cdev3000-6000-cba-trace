@@ -54,6 +54,18 @@ fewer than five prior transactions or less than 15 days of history. Those
 signals do not have a meaningful baseline for a genuinely fresh account;
 merchant limits still apply.
 
+## Other Scenarios
+
+Fraud cases that pass through the rules and do not trigger any alerts and violations.
+Majority of these will be legitimate. The two fraudulent cases are:
+
+- Credit card stolen: Making payments to one account at least 5 times within one hour
+  - If older than 60 days: `reported fraud`
+  - Else: `legitimate`
+- Buy and Sell: New customer account emerges and receives money multiple accounts
+  - 20% of cases: `reported fraud`
+  - 80% of cases: `legitimate`
+
 ## Prerequisites
 
 - Python 3.11 or later
