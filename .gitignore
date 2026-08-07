@@ -1,4 +1,8 @@
 .neon
+models/
+*.joblib
+# Locally generated evaluation charts.
+evaluation_*.png
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
