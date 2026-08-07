@@ -63,11 +63,13 @@ Majority of these will be legitimate. The two fraudulent cases are:
   - Intended to be caught by big model, occurs throughout timeline environment
   - If older than 60 days: `reported fraud`
   - Else: `legitimate`
+  - Note: This is intended to be caught by the big model
 
 - Buy and Sell: New customer account emerges and receives money multiple accounts
   - Intended to be caught by small model, occurs within 60 day blindspot period
   - 20% of cases: `reported fraud`
   - 80% of cases: `legitimate`
+  - Note: This is intended to be the emerging trend missed by the big model and caught by the small model
 
 ## Prerequisites
 
