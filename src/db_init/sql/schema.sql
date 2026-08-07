@@ -70,18 +70,10 @@ CREATE TABLE transactions (
     receiver_bsb INTEGER NOT NULL,
     receiver_account_number INTEGER NOT NULL,
     amount MONEY NOT NULL CHECK (amount >= 0.0::MONEY),
-<<<<<<< HEAD
-    transaction_time timestamptz NOT NULL,
-    sender_latitude Decimal(8,6) CHECK (sender_latitude >= -90 AND sender_latitude <= 90),
-    sender_longitude Decimal(9,6) CHECK (sender_longitude >= -180 AND sender_longitude <= 180), -- https://stackoverflow.com/a/1196429
-    label transaction_label, -- note this is the most up to date label after any corrections
-    true_label transaction_label,
-=======
     transaction_time TIMESTAMPTZ NOT NULL,
     sender_latitude DECIMAL(8,6) CHECK (sender_latitude BETWEEN -90 AND 90),
     sender_longitude DECIMAL(9,6) CHECK (sender_longitude BETWEEN -180 AND 180),
     predicted_label transaction_label,
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
     merchant_tags BIGINT REFERENCES merchant_tags(id),
     device_id CHAR(64) NOT NULL,
     true_label transaction_label,
