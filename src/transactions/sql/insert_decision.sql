@@ -1,0 +1,33 @@
+INSERT INTO transaction_decisions (
+    transaction_id,
+    rules_label,
+    rules_reasons,
+    big_model_label,
+    big_model_score,
+    big_model_version,
+    big_model_evidence,
+    small_model_label,
+    small_model_version,
+    small_cluster_id,
+    small_model_evidence,
+    final_label,
+    decision_source,
+    decision_reason,
+    action
+) VALUES (
+    %(transaction_id)s,
+    %(rules_label)s,
+    %(rules_reasons)s,
+    %(big_model_label)s,
+    %(big_model_score)s,
+    %(big_model_version)s,
+    %(big_model_evidence)s::jsonb,
+    %(small_model_label)s,
+    %(small_model_version)s,
+    %(small_cluster_id)s,
+    %(small_model_evidence)s::jsonb,
+    %(final_label)s,
+    %(decision_source)s,
+    %(decision_reason)s,
+    %(action)s
+);

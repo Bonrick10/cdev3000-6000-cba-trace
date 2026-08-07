@@ -1,0 +1,51 @@
+from pathlib import Path
+
+import pytest
+
+from src.contracts import Action
+from src.decision import combine_model_labels, decision_for_rule_exit
+from src.label import Label
+
+
+def test_existing_database_enum_migration_adds_both_rule_exit_labels():
+    migration = (
+        Path(__file__).parents[1]
+        / "src"
+        / "db_init"
+        / "sql"
+        / "migrations"
+        / "001_add_rule_alert.sql"
+    ).read_text(encoding="utf-8")
+    assert "'rule_approval'" in migration
+    assert "'rule_alert'" in migration
+
+
+def test_database_contract_has_one_alert_action():
+    schema = (
+        Path(__file__).parents[1] / "src" / "db_init" / "sql" / "schema.sql"
+    ).read_text(encoding="utf-8")
+    assert "'approve_and_alert'" in schema
+    assert "approve_and_investigate" not in schema
+
+
+def test_labels_match_database_strings():
+    assert Label.parse("rule_alert") is Label.RULE_ALERT
+    assert Label.parse("RULE_APPROVAL") is Label.RULE_APPROVAL
+    assert Label.CONFIRMED_FRAUDULENT.value == "confirmed_fraudulent"
+
+
+def test_rule_routes_are_source_aware():
+    assert decision_for_rule_exit(Label.RULE_VIOLATION).action is Action.BLOCK
+    assert decision_for_rule_exit(Label.RULE_ALERT).action is Action.APPROVE_AND_ALERT
+    assert decision_for_rule_exit(Label.RULE_APPROVAL).action is Action.APPROVE
+
+
+def test_models_take_worst_label_without_blocking():
+    decision = combine_model_labels(Label.UNUSUAL, Label.SUSPICIOUS)
+    assert decision.label is Label.SUSPICIOUS
+    assert decision.action is Action.APPROVE_AND_ALERT
+
+
+def test_models_cannot_return_rule_labels():
+    with pytest.raises(ValueError):
+        combine_model_labels(Label.RULE_ALERT, Label.LEGITIMATE)
