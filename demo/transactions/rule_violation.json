@@ -1,0 +1,12 @@
+{
+    "sender_bsb": 120616,
+    "sender_account_number": 100293003,
+    "receiver_bsb": 100254,
+    "receiver_account_number": 101298716,
+    "amount": 1500.0,
+    "transaction_time": "2024-07-01T00:00:00+00:00",
+    "sender_latitude": 59.723537,
+    "sender_longitude": 125.208045,
+    "merchant_tags": 5411,
+    "device_id": "e397246de4b85f247f71421ab4b4d4c842c67550f3e2242ebfdd441d00ddcb31"
+}
