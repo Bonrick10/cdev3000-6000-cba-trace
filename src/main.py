@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from typing import Any
 
 from src.big_model.train import train_from_database as train_big_model
@@ -12,6 +13,7 @@ from src.new_transaction import process_transaction, read_transaction
 from src.report_transaction import report_transaction
 from src.small_model.feedback import rebuild_from_database
 from src.small_model.train import train_from_database as train_small_model
+from src.terminal import format_pipeline_result
 
 
 def _json_default(value: Any):
@@ -32,6 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--persist",
         action="store_true",
         help="insert the transaction and decision evidence (default: dry run)",
+    )
+    process.add_argument(
+        "--json",
+        action="store_true",
+        help="emit machine-readable JSON instead of the terminal summary",
     )
 
     commands.add_parser("train-big", help="train the mature supervised model")
@@ -61,6 +68,15 @@ def main() -> None:
             read_transaction(args.transaction_json),
             persist=args.persist,
         )
+        if not args.json:
+            print(
+                format_pipeline_result(
+                    output,
+                    persisted=args.persist,
+                    color=sys.stdout.isatty(),
+                )
+            )
+            return
     elif args.command == "train-big":
         output = train_big_model()["metadata"]
     elif args.command == "train-small":

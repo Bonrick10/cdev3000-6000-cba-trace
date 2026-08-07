@@ -7,8 +7,8 @@ emerging fraud-pattern monitoring:
    and alert as `rule_alert`, or pass the attempt to both models.
 2. The big model is a leakage-safe logistic-regression probability model.
 3. The small model learns versioned K-Means fraud neighbourhoods from
-   `confirmed_fraudulent` transactions and profiles the eligible wider
-   population around them.
+   observable `reported_fraud` transactions and profiles the eligible wider
+   population around them. Hidden `true_label` values are never visible to it.
 4. The post-rules decision uses the more severe model label. Model-owned
    `suspicious` results are approved and alerted; only a
    `rule_violation` blocks.
@@ -23,6 +23,8 @@ model evidence, versions, final label, and action.
 - `unusual`: outside usual behaviour; approve.
 - `suspicious`: potential fraud or scam; approve and alert.
 - `confirmed_fraudulent`: confirmed by the customer after processing.
+- `reported_fraud`: observable customer fraud report used as a Small Model seed;
+  it is not supplied as a model feature or treated as hidden ground truth.
 - `rule_violation`: a blocking rule triggered; block before model evaluation.
 - `rule_approval`: a high-confidence approval rule triggered; approve and bypass
   both models.
@@ -53,18 +55,48 @@ fewer than five prior transactions or less than 15 days of history. Those
 signals do not have a meaningful baseline for a genuinely fresh account;
 merchant limits still apply.
 
-## Setup
+## Prerequisites
 
-Python 3.11 or later is required.
+- Python 3.11 or later
+- PostgreSQL client (`psql`) only when creating or migrating a database
+- Access to a PostgreSQL/Neon database with the project schema and data
+
+## Quick start
 
 ```bash
-python3.11 -m venv .venv
+git clone https://github.com/Bonrick10/cdev3000-6000-cba-trace.git
+cd cdev3000-6000-cba-trace
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env
 ```
 
-Set `DATABASE_URL` in `.env`. Do not commit that file.
+Edit `.env` and replace the sample `DATABASE_URL`. Keep
+`MODEL_DATA_SOURCE=full_txns` for the supplied synthetic development dataset.
+The real `.env` is ignored by Git and must never be committed.
+
+Verify configuration without printing the database secret:
+
+```bash
+python -c "from dotenv import load_dotenv; import os; load_dotenv(); print('DATABASE_URL:', 'SET' if os.getenv('DATABASE_URL') else 'MISSING'); print('MODEL_DATA_SOURCE:', os.getenv('MODEL_DATA_SOURCE', 'full_txns'))"
+```
+
+Train the two local artifacts, evaluate, and run a safe dry-run transaction:
+
+```bash
+python -m src.main train-big
+python -m src.main train-small
+python -m src.main evaluate
+python -m src.main process demo/transactions/emerging_fraud.json
+```
+
+Model artifacts are deliberately not committed. Training creates
+`models/big_model_current.joblib` and `models/small_model_current.joblib` on the
+machine running the application.
+
+## Database setup
 
 For a fresh database only:
 
@@ -90,15 +122,28 @@ regenerate a remote database during model training.
 ## Commands
 
 ```bash
+# Train and save model artifacts
 python -m src.main train-big
 python -m src.main train-small
+
+# Read-only evaluation; use --json for machine-readable output
 python -m src.main evaluate
-# Dry run: evaluate without inserting database rows
+python -m src.main evaluate --json
+
+# Dry run: process without inserting database rows
 python -m src.main process src/test_new_transaction.json
+
+# Machine-readable transaction result
+python -m src.main process src/test_new_transaction.json --json
+
 # Explicitly persist the transaction and decision evidence
 python -m src.main process src/test_new_transaction.json --persist
+
+# Record customer feedback; confirmed fraud triggers a Small Model rebuild
 python -m src.main report 123 confirmed_fraudulent
 python -m src.main refresh-small
+
+# Quality checks
 pytest
 ruff check .
 ```
@@ -124,7 +169,28 @@ run unless `--persist` is explicitly supplied.
 Transaction processing defaults to a dry run for safe demos and testing. A dry
 run still reads historical context and runs the complete rules/model pipeline,
 but it does not insert into `transactions` or `transaction_decisions`. Pass
-`--persist` only when those rows should be recorded.
+`--persist` only when those rows should be recorded. The default terminal view
+is a concise, coloured pipeline summary; add `--json` when another program needs
+the complete response object.
+
+## Data, training, and evaluation
+
+Both models share one feature builder, so historical training and live serving
+use the same behavioural definitions. Features are calculated strictly from
+the current transaction and information available before it:
+
+- amount and log amount;
+- cyclical hour-of-day and day-of-week values, plus weekend status;
+- sender location;
+- account history age and prior transaction count;
+- prior payee and device transaction counts;
+- prior 24-hour and seven-day counts and spending totals;
+- prior amount mean, standard deviation, and current-to-mean ratio;
+- time and distance from the previous transaction, including log transforms;
+- merchant category.
+
+Labels, rule triggers, rule outputs, model outputs, customer identity, date of
+birth, and hidden truth are not model features.
 
 The big and small models read their development population from the canonical
 `full_txns` snapshot. Live rules, insertion, corrections, and decision evidence
@@ -158,6 +224,12 @@ combined decision. Add `--json` for machine-readable output. Hidden truth is
 revealed only when calculating precision, recall, false-positive rate, and
 captured fraud value.
 
+The `EQUAL REVIEW BUDGET (TOP-K)` section is a capacity-normalised ranking
+comparison. For each listed budget it selects each system's highest-risk
+transactions, then reveals hidden truth only to score them. It does not claim
+that the configured production thresholds naturally emit that number of
+alerts. This distinction must be preserved when presenting evaluation results.
+
 Older rows remain available only while constructing leakage-safe prior-history
 features. Each confirmed customer fraud report triggers a complete versioned
 rebuild of the current window, naturally evicting expired population rows.
@@ -180,3 +252,37 @@ rebuilds both centroids and cluster statistics from the current rolling window.
 development routing comes from the observable `predicted_label` in `full_txns`.
 The audit table preserves the exact model versions and evidence that produced
 each persisted live decision.
+
+## Verification and troubleshooting
+
+Before opening or merging a pull request, run:
+
+```bash
+ruff check .
+pytest
+git status --short
+```
+
+Common failures:
+
+- `DATABASE_URL is not configured`: create `.env` from `.env.example` and add
+  the Neon connection string.
+- `relation ... does not exist` or enum-label errors: apply the migrations in
+  order; they are not run automatically.
+- `Big-model artifact not found` or `Small-model artifact not found`: run both
+  training commands before processing a transaction.
+- Too few reported frauds: the Small Model requires at least two observable
+  `reported_fraud` seeds in its rolling window.
+- Database connection timeouts: confirm network access, Neon availability, and
+  that the connection string includes `sslmode=require`.
+
+## Safety and submission notes
+
+- Training and evaluation never overwrite database labels.
+- Rules and models use behavioural inputs; hidden truth is evaluation-only.
+- Transaction processing is dry-run by default.
+- Credentials, virtual environments, caches, and fitted model artifacts are
+  excluded from version control.
+- `full_txns` is synthetic development data. Evaluation figures demonstrate
+  relative project behaviour and must not be presented as validated CBA
+  production performance.
