@@ -1,16 +1,3 @@
-<<<<<<< HEAD
-"""Main Module"""
-
-from db_init.populate_data import gen_all_txns, generate_seed_data, init_sting_txns, gen_sting_txns, gen_high_freq_txns, fix_sting_txns_device
-
-if __name__ == "__main__":
-    # generate_seed_data()
-    # gen_all_txns()
-    # init_sting_txns()
-    # gen_sting_txns()
-    # gen_high_freq_txns()
-    fix_sting_txns_device()
-=======
 """Command-line entry points for processing, training, and feedback."""
 
 from __future__ import annotations
@@ -112,4 +99,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9

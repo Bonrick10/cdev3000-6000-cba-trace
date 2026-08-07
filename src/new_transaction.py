@@ -1,17 +1,3 @@
-<<<<<<< HEAD
-"""Fraud detection system that runs when a new transaction is entered, the process goes as follows
-1. Checks the transaction against the ruleset
-2. Uses the large model to determine a score, and checks if that score exceeds a threshold
-3. Uses the small model to determine whether the transaction falls in a cluster that
-    has many cases of fraud
-If any point fails then the transaction is blocked, otherwise it is allowed to go through
-"""
-
-import json
-
-from src.label import Label
-from src.rules.rules import check_rules
-=======
 """End-to-end processing for one pending bank transaction."""
 
 from __future__ import annotations
@@ -20,7 +6,6 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
 
 from src.big_model.predict import predict_transaction as predict_big_model
 from src.contracts import PipelineResult
@@ -34,33 +19,18 @@ from src.transactions.repository import persist_pipeline_result
 from src.transactions.validation import validate_transaction
 from src.utils.db import NeonDB
 
-<<<<<<< HEAD
-
-# For now this will just read in the new transaction from a json file
-# Ideally for the final demo the user would be able to enter a transaction through the frontend UI
-# Which would send the transaction in a JSON format to the backend which can then call this function
-def read_transaction(filename):
-    """Reads in transaction from json file"""
-    with open(filename, "r", encoding="utf-8") as file:
-=======
 Predictor = Callable[[Any], Dict[str, Any]]
 
 
 def read_transaction(filename: str | Path) -> Dict[str, Any]:
     """Read a transaction JSON object from disk."""
     with Path(filename).open("r", encoding="utf-8") as file:
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
         contents = json.load(file)
     if not isinstance(contents, dict):
         raise ValueError("Transaction JSON must contain one object.")
     return contents
 
 
-<<<<<<< HEAD
-def process_transaction(transaction):
-    """Fraud detection pipeline that determines whether a transaction is fraud or not
-    Using ruleset, large and small models
-=======
 def _model_label(result: Dict[str, Any], model_name: str) -> Label:
     try:
         label = Label.parse(result["predicted_label"])
@@ -88,7 +58,6 @@ def process_transaction(
 
     Persistence is deliberately opt-in so demos and tests cannot accidentally
     insert transactions. Production callers must pass ``persist=True``.
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
     """
     pending = validate_transaction(transaction)
     database = db
@@ -126,20 +95,8 @@ def process_transaction(
             small_model=small_evidence,
         )
 
-<<<<<<< HEAD
-    # Call Small Model
-
-    if ruleset_result == Label.LEGITIMATE and not DRYRUN_FLAG:
-        # Insert new transaction into db
-        pass
-    return ruleset_result
-
-
-process_transaction(read_transaction("src/test_new_transaction.json"))
-=======
     if persist:
         result.transaction_id = persist_pipeline_result(
             pending, result, prior_context, database
         )
     return result.to_dict()
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9

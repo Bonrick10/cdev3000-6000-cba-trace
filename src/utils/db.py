@@ -1,24 +1,15 @@
-<<<<<<< HEAD
-"""Database connection utilities for Neon/Postgres."""
-
-import os
-import sys
-=======
 """Small, shared database boundary for Neon/PostgreSQL."""
 
 import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
 
 import psycopg2
 from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
 
 load_dotenv()
-<<<<<<< HEAD
-=======
 
 
 class NeonDB:
@@ -30,7 +21,6 @@ class NeonDB:
         """
         Initialize the NeonDB instance and load the database URL.
         """
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
 
 
 class NeonDB:
@@ -49,15 +39,10 @@ class NeonDB:
         """
         return psycopg2.connect(self.db_url, cursor_factory=RealDictCursor)
 
-<<<<<<< HEAD
-    def read_sql_file(self, filepath):
-        """Reads an SQL file into a string and returns it
-=======
     @staticmethod
     def read_sql_file(filepath):
         """
         Reads an SQL file into a string and returns it
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
         Can then be passed into query() and execute()
         """
         path = Path(filepath)
@@ -78,14 +63,9 @@ class NeonDB:
         finally:
             connection.close()
 
-<<<<<<< HEAD
-    def query(self, sql, params=None):
-        """Runs a SELECT query and returns results as Python dicts.
-=======
     def query(self, sql, params=None, connection=None):
         """
         Runs a SELECT query and returns results as Python dicts.
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
         """
         conn = connection or self.connect()
         owns_connection = connection is None
@@ -97,14 +77,9 @@ class NeonDB:
             if owns_connection:
                 conn.close()
 
-<<<<<<< HEAD
-    def execute(self, sql, params=None):
-        """Runs INSERT/UPDATE/DELETE queries.
-=======
     def execute(self, sql, params=None, connection=None):
         """
         Runs INSERT/UPDATE/DELETE queries.
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
         """
         conn = connection or self.connect()
         owns_connection = connection is None

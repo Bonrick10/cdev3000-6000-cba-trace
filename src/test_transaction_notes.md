@@ -1,16 +1,8 @@
-<<<<<<< HEAD
-Device session 
-- id = 105028
-- entity_id = 147514
-- device_id = c20ad4d76fe97759aa27a0c99bff6710 
-- start_time = 2026-11-24 10:24:11.734022+00
-=======
 <!-- Device session 
 - id = 106411
 - entity_id = 120866
 - device_id = 14bfa6bb14875e45bba028a21ed38046    
 - start_time = 2026-02-23 17:14:04.53408+00
->>>>>>> cb9cd5a8bd1209222dfe2d28609f9f202e9ac8b9
 - end_time = NULL 
 
 Sender Entity
