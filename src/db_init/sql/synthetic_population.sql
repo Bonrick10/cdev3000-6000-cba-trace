@@ -1,6 +1,6 @@
 INSERT INTO branches (bsb, branch_location)
 SELECT
-    (g * 7919) % 90000 + 100000,
+    (sequence * 7919) % 90000 + 100000,
     (ARRAY['Sydney','Melbourne','Brisbane','Perth','Adelaide','Canberra',
     'Hobart','Darwin','Gold Coast','Newcastle','Wollongong','Geelong',
     'Townsville','Cairns','Toowoomba','Ballarat','Bendigo',
@@ -8,11 +8,11 @@ SELECT
     'Coffs Harbour','Port Macquarie','Tamworth','Armidale','Orange','Bathurst',
     'Albury','Wagga Wagga','Shepparton','Mildura','Warrnambool',
     'Bunbury','Geraldton','Kalgoorlie','Alice Springs','Mount Isa'] )[1 + (random() * 38)::int] AS branch_location
-FROM generate_series(1, 500) g;
+FROM generate_series(1, 500) AS sequence;
 
 INSERT INTO entities (id, given_name, surname, date_of_birth)
 SELECT 
-    (g * 7919) % 90000 + 100000,
+    (sequence * 7919) % 90000 + 100000,
     (ARRAY['John','Jane','Michael','Emily','David','Sarah','James','Olivia',
     'William','Emma','Benjamin','Ava','Lucas','Sophia','Mason','Isabella',
     'Ethan','Mia','Alexander','Charlotte'] )[1 + (random() * 19)::int] AS given_name,
@@ -20,7 +20,7 @@ SELECT
     'Davis','Rodriguez','Martinez','Hernandez','Lopez','Gonzalez',
     'Wilson','Anderson'] )[1 + (random() * 14)::int] AS surname,
     date '1950-01-01' + (random() * (date '2000-12-31' - date '1950-01-01'))::int AS date_of_birth
-FROM generate_series(1, 50) g;
+FROM generate_series(1, 50) AS sequence;
 
 INSERT INTO merchant_tags (
     id,

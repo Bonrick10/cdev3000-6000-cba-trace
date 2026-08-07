@@ -1,73 +1,143 @@
--- note that no data validation, assumes all the IDs are in the db, as data validation low priority and not main focus of this project
--- Also note that tried to use SQL subqueries instead of sending multiple queries through psycopg2 to minimise latency (but subqueries are still pretty bad)
--- Although with CTEs it is possible that the query optimiser will efficiently combine some of them to not do subqueries 
-WITH period_spending AS (
-  SELECT 
-    COALESCE(SUM(transactions.amount) FILTER (WHERE transactions.transaction_time >= %(transaction_time)s::timestamptz - INTERVAL '24 hours'), 0.0::money) AS "24_hour",
-    COALESCE(SUM(transactions.amount), 0.0::money) AS "7_day"
-  FROM transactions
-  WHERE 
-    transactions.sender_bsb = %(sender_bsb)s
-    AND transactions.sender_account_number = %(sender_account_number)s
-    AND transactions.transaction_time >=  %(transaction_time)s::timestamptz - INTERVAL '7 days'
-    AND transactions.transaction_time <=  %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
+WITH completed_transactions AS (
+    SELECT txn.*
+    FROM transactions AS txn
+    LEFT JOIN transaction_decisions AS decision ON decision.transaction_id = txn.id
+    WHERE COALESCE(
+        decision.action <> 'block',
+        txn.predicted_label IS DISTINCT FROM 'rule_violation'
+        AND NOT EXISTS (
+            SELECT 1
+            FROM corrections AS correction
+            WHERE correction.transaction_id = txn.id
+              AND correction.old_label = 'rule_violation'
+        )
+    )
 ),
 sender_entity AS (
-  SELECT entities.id
-  FROM 
-    entities 
-    INNER JOIN accounts ON accounts.entity_id = entities.id
-    WHERE 
-      accounts.bsb = %(sender_bsb)s
-      AND accounts.account_number = %(sender_account_number)s
+    SELECT account.entity_id
+    FROM accounts AS account
+    WHERE account.bsb = %(sender_bsb)s
+      AND account.account_number = %(sender_account_number)s
+),
+sender_history AS (
+    SELECT
+        COUNT(txn.id) AS prior_transaction_count,
+        MIN(txn.transaction_time) AS first_transaction_time,
+        AVG(txn.amount::numeric) AS prior_mean_amount,
+        STDDEV_POP(txn.amount::numeric) AS prior_std_amount,
+        COUNT(txn.id) FILTER (
+            WHERE txn.transaction_time >= %(transaction_time)s::timestamptz - INTERVAL '24 hours'
+        ) AS prior_24h_transaction_count,
+        COUNT(txn.id) FILTER (
+            WHERE txn.transaction_time >= %(transaction_time)s::timestamptz - INTERVAL '7 days'
+        ) AS prior_7d_transaction_count,
+        COALESCE(SUM(txn.amount::numeric) FILTER (
+            WHERE txn.transaction_time >= %(transaction_time)s::timestamptz - INTERVAL '24 hours'
+        ), 0) AS prior_24h_spend,
+        COALESCE(SUM(txn.amount::numeric) FILTER (
+            WHERE txn.transaction_time >= %(transaction_time)s::timestamptz - INTERVAL '7 days'
+        ), 0) AS prior_7d_spend
+    FROM completed_transactions AS txn
+    WHERE txn.sender_bsb = %(sender_bsb)s
+      AND txn.sender_account_number = %(sender_account_number)s
+      AND txn.transaction_time < %(transaction_time)s::timestamptz
+),
+payee_history AS (
+    SELECT COUNT(txn.id) AS prior_payee_transaction_count
+    FROM completed_transactions AS txn
+    WHERE txn.sender_bsb = %(sender_bsb)s
+      AND txn.sender_account_number = %(sender_account_number)s
+      AND txn.receiver_bsb = %(receiver_bsb)s
+      AND txn.receiver_account_number = %(receiver_account_number)s
+      AND txn.transaction_time < %(transaction_time)s::timestamptz
+),
+device_history AS (
+    SELECT COUNT(txn.id) AS prior_device_transaction_count
+    FROM completed_transactions AS txn
+    WHERE txn.sender_bsb = %(sender_bsb)s
+      AND txn.sender_account_number = %(sender_account_number)s
+      AND TRIM(txn.device_id) = TRIM(%(device_id)s)
+      AND txn.transaction_time < %(transaction_time)s::timestamptz
+),
+device_session_history AS (
+    SELECT EXISTS (
+        SELECT 1
+        FROM device_sessions AS session
+        CROSS JOIN sender_entity AS sender
+        WHERE session.entity_id = sender.entity_id
+          AND TRIM(session.device_id) = TRIM(%(device_id)s)
+          AND session.session_start_time < %(transaction_time)s::timestamptz
+    ) AS device_seen_before
 ),
 last_transaction AS (
-  SELECT 
-    transactions.transaction_time,
-    transactions.sender_latitude,
-    transactions.sender_longitude
-  FROM transactions
-  WHERE 
-    transactions.sender_bsb = %(sender_bsb)s
-    AND transactions.sender_account_number = %(sender_account_number)s
-    AND transactions.transaction_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
-  ORDER BY transactions.transaction_time DESC 
-  LIMIT 1
+    SELECT
+        txn.transaction_time AS last_transaction_time,
+        txn.sender_latitude::double precision AS last_transaction_latitude,
+        txn.sender_longitude::double precision AS last_transaction_longitude
+    FROM completed_transactions AS txn
+    WHERE txn.sender_bsb = %(sender_bsb)s
+      AND txn.sender_account_number = %(sender_account_number)s
+      AND txn.transaction_time < %(transaction_time)s::timestamptz
+    ORDER BY txn.transaction_time DESC, txn.id DESC
+    LIMIT 1
+),
+recurring_history AS (
+    SELECT COUNT(txn.id) AS num_recurring
+    FROM completed_transactions AS txn
+    WHERE txn.sender_bsb = %(sender_bsb)s
+      AND txn.sender_account_number = %(sender_account_number)s
+      AND txn.receiver_bsb = %(receiver_bsb)s
+      AND txn.receiver_account_number = %(receiver_account_number)s
+      AND txn.transaction_time < (
+          %(transaction_time)s::timestamptz
+          - %(recurring_age_days)s * INTERVAL '1 day'
+      )
+      AND txn.amount::numeric BETWEEN
+          %(amount)s - %(recurring_amount_variance)s
+          AND %(amount)s + %(recurring_amount_variance)s
+      AND LEAST(
+          ABS(
+              EXTRACT(HOUR FROM txn.transaction_time) * 60
+              + EXTRACT(MINUTE FROM txn.transaction_time)
+              - EXTRACT(HOUR FROM %(transaction_time)s::timestamptz) * 60
+              - EXTRACT(MINUTE FROM %(transaction_time)s::timestamptz)
+          ),
+          1440 - ABS(
+              EXTRACT(HOUR FROM txn.transaction_time) * 60
+              + EXTRACT(MINUTE FROM txn.transaction_time)
+              - EXTRACT(HOUR FROM %(transaction_time)s::timestamptz) * 60
+              - EXTRACT(MINUTE FROM %(transaction_time)s::timestamptz)
+          )
+      ) <= %(recurring_time_variance_minutes)s
 )
-SELECT json_build_object(
-  'device_seen_before', EXISTS (
-    SELECT 1
-    FROM 
-      device_sessions
-      CROSS JOIN sender_entity
-    WHERE 
-      device_sessions.entity_id = sender_entity.id
-      AND device_sessions.device_id = %(device_id)s
-      AND device_sessions.session_start_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
-  ),
-  'entity_id', sender_entity.id,
-  '24_hour_spending', period_spending."24_hour"::numeric,-- note that this excludes the pending new transaction 
-  '7_day_spending', period_spending."7_day"::numeric,
-  'last_transaction_time', last_transaction.transaction_time,
-  'last_transaction_longitude', last_transaction.sender_longitude,
-  'last_transaction_lattitude', last_transaction.sender_latitude,
-  'is_new_payee', NOT EXISTS(
-      SELECT 1
-      FROM transactions
-      WHERE 
-        transactions.sender_bsb = %(sender_bsb)s
-        AND transactions.sender_account_number = %(sender_account_number)s
-        AND transactions.receiver_bsb = %(receiver_bsb)s
-        AND transactions.receiver_account_number = %(receiver_account_number)s
-        AND transactions.transaction_time <= %(transaction_time)s::timestamptz -- exclude future rows past this timestamp
-  ),
-  'suspicious_threshold_lower', merchant_tags.suspicious_threshold_lower::numeric,
-  'usual_threshold_lower', merchant_tags.usual_threshold_lower::numeric,
-  'usual_threshold_upper', merchant_tags.usual_threshold_upper::numeric,
-  'suspicious_threshold_upper', merchant_tags.suspicious_threshold_upper::numeric
-)
-FROM 
-  period_spending
-  CROSS JOIN sender_entity
-  LEFT JOIN merchant_tags ON merchant_tags.id = %(merchant_tags)s -- These two may be NULL
-  LEFT JOIN last_transaction ON TRUE;
+SELECT
+    sender.entity_id,
+    session_history.device_seen_before,
+    (payee.prior_payee_transaction_count = 0) AS is_new_payee,
+    history.prior_transaction_count,
+    history.first_transaction_time,
+    history.prior_mean_amount,
+    COALESCE(history.prior_std_amount, 0) AS prior_std_amount,
+    history.prior_24h_transaction_count,
+    history.prior_7d_transaction_count,
+    history.prior_24h_spend,
+    history.prior_7d_spend,
+    payee.prior_payee_transaction_count,
+    device.prior_device_transaction_count,
+    previous.last_transaction_time,
+    previous.last_transaction_latitude,
+    previous.last_transaction_longitude,
+    recurring.num_recurring,
+    merchant.merchant_category,
+    merchant.suspicious_threshold_lower::numeric AS suspicious_threshold_lower,
+    merchant.usual_threshold_lower::numeric AS usual_threshold_lower,
+    merchant.usual_threshold_upper::numeric AS usual_threshold_upper,
+    merchant.suspicious_threshold_upper::numeric AS suspicious_threshold_upper
+FROM sender_entity AS sender
+CROSS JOIN sender_history AS history
+CROSS JOIN payee_history AS payee
+CROSS JOIN device_history AS device
+CROSS JOIN device_session_history AS session_history
+CROSS JOIN recurring_history AS recurring
+LEFT JOIN last_transaction AS previous ON TRUE
+LEFT JOIN merchant_tags AS merchant ON merchant.id = %(merchant_tags)s;
