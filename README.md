@@ -133,6 +133,9 @@ regenerate a remote database during model training.
 ## Commands
 
 ```bash
+# Generate data
+python src/db_init/generator.py
+
 # Train and save model artifacts
 python -m src.main train-big
 python -m src.main train-small
