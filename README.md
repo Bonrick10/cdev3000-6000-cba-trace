@@ -37,8 +37,7 @@ assessment.
 
 ## Rules and precedence
 
-When several rules trigger, the safety order is `rule_violation` > `rule_alert`
-> `rule_approval`:
+When several rules trigger, the safety order is `rule_violation` > `rule_alert` > `rule_approval`:
 
 - At least five matching payments older than seven days to the same payee,
   within $5 and 30 minutes of the current time of day: `rule_approval`.
@@ -59,7 +58,7 @@ merchant limits still apply.
 
 - Python 3.11 or later
 - PostgreSQL client (`psql`) only when creating or migrating a database
-- Access to a PostgreSQL/Neon database with the project schema and data
+- Access to a PostgreSQL database with the project schema and data
 
 ## Quick start
 
@@ -148,7 +147,7 @@ pytest
 ruff check .
 ```
 
-For a deterministic dry-run demonstration against the project Neon dataset,
+For a deterministic dry-run demonstration against the dataset included in the database,
 train both artifacts and run the prepared fixtures:
 
 ```bash
@@ -266,7 +265,7 @@ git status --short
 Common failures:
 
 - `DATABASE_URL is not configured`: create `.env` from `.env.example` and add
-  the Neon connection string.
+  the database connection string.
 - `relation ... does not exist` or enum-label errors: apply the migrations in
   order; they are not run automatically.
 - `Big-model artifact not found` or `Small-model artifact not found`: run both
